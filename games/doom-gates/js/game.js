@@ -11,6 +11,8 @@
   var squadEl = document.getElementById('squad-num');
   var goalEl = document.getElementById('goal');
   var bannerEl = document.getElementById('banner');
+  var hintEl = document.getElementById('hint');
+  var squadLabel = document.getElementById('squad-label');
   var hurtEl = document.getElementById('hurt');
   var audio = DGAudio.create();
 
@@ -84,9 +86,10 @@
     screen = 'play';
     pauseBtn.hidden = false;
     overlay.hidden = true;
-    bannerEl.textContent = '滑向更大的数字。子弹打在门上会改数字';
+    bannerEl.hidden = true;
+    hintEl.hidden = true;
+    squadLabel.textContent = '滑向更大的数字';
     taughtUntil = performance.now() + 2800;
-    document.getElementById('hint').hidden = false;
   }
 
   function end(kind) {
@@ -94,10 +97,19 @@
     ended = true;
     screen = kind;
     pauseBtn.hidden = true;
+    bannerEl.hidden = true;
+    hintEl.hidden = true;
+    squadEl.textContent = String(Math.max(0, state.squad));
+    shownSquad = state.squad;
     if (kind === 'win') {
       audio.win();
       goalEl.textContent = state.finish.name + ' 到手 · ' + state.squad + ' 人';
-    } else audio.lose();
+      squadLabel.textContent = '武器到手';
+    } else {
+      audio.lose();
+      goalEl.textContent = loseCopy()[0];
+      squadLabel.textContent = '人数 ' + state.squad;
+    }
     renderOverlay();
   }
 
@@ -156,6 +168,7 @@
       if (zombie.flash > 0) zombie.flash -= dt;
     });
     drain();
+    if (screen !== 'play') return;
     var weapon = DGCore.weaponByIndex(state.weapon);
     goalEl.textContent = weapon.name + '  ·  终点 ' + state.finish.name + ' 需要 ' + state.finish.need;
     if (shownSquad !== state.squad) {
@@ -165,7 +178,7 @@
       squadEl.classList.add('pop');
       shownSquad = state.squad;
     }
-    if (performance.now() > taughtUntil) bannerEl.textContent = '人数 ' + state.squad + '  ·  击倒 ' + state.kills;
+    if (performance.now() > taughtUntil) squadLabel.textContent = '击倒 ' + state.kills;
   }
 
   function frame(ts) {
@@ -242,7 +255,10 @@
       screen = 'menu';
       state = null;
       pauseBtn.hidden = true;
+      bannerEl.hidden = true;
+      hintEl.hidden = true;
       squadEl.textContent = '1';
+      squadLabel.textContent = '小队人数';
       goalEl.textContent = '向末日开炮';
       renderOverlay();
     } else if (act === 'next') {

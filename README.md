@@ -10,9 +10,15 @@
 | **消除我可以** | [`games/duck-pop/`](games/duck-pop/) | 鸭子按颜色和弹药打穿同色像素，碎块流体下落 |
 | **向末日开炮** | [`games/doom-gates/`](games/doom-gates/) | 自动跑、左右滑、自动开火；数字门改小队人数，终点武器认人数 |
 
-合集首页：[`index.html`](index.html)
+合集首页：[index.html](index.html)
 
-旧原型（SameGame、抽象数字门）在 [`archive/`](archive/)，不出现在首页卡片上。
+首页三张卡：
+
+- [拼图解压馆](games/sand-bucket/index.html)
+- [消除我可以](games/duck-pop/index.html)
+- [向末日开炮](games/doom-gates/index.html)
+
+旧原型（SameGame、抽象数字门）在 [archive/](archive/)，不出现在首页卡片上。
 
 ## 本地打开
 
@@ -26,11 +32,12 @@ open index.html
 python3 -m http.server 8080
 ```
 
-然后访问首页，或直接打开：
+然后打开首页，或直接进入三张卡：
 
-- `games/sand-bucket/index.html`
-- `games/duck-pop/index.html`
-- `games/doom-gates/index.html`
+- [合集首页](index.html)
+- [拼图解压馆](games/sand-bucket/index.html)
+- [消除我可以](games/duck-pop/index.html)
+- [向末日开炮](games/doom-gates/index.html)
 
 `file://` 可用：关卡写在脚本里，不请求 JSON。
 

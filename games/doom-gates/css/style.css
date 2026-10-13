@@ -63,11 +63,11 @@ body {
   pointer-events: none; font-weight: 800; text-align: center;
 }
 #banner {
-  bottom: 248px; max-width: 92%;
+  top: 156px; bottom: auto; max-width: 78%;
   background: rgba(0,0,0,.45); border-radius: 999px; padding: 6px 12px; font-size: 13px;
 }
-#hint { bottom: 218px; font-size: 11px; letter-spacing: .18em; opacity: .75; }
-#pause[hidden] { display: none !important; }
+#hint { top: 196px; bottom: auto; font-size: 11px; letter-spacing: .18em; opacity: .75; }
+#banner[hidden], #hint[hidden], #pause[hidden], #overlay[hidden] { display: none !important; }
 #floats { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
 .floater {
   position: absolute; font-weight: 900; white-space: nowrap;
@@ -83,7 +83,7 @@ body {
   background: rgba(6, 10, 20, .55);
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
-#overlay[hidden] { display: none; }
+
 .sheet {
   width: min(400px, 100%);
   background: linear-gradient(180deg, #24365c, #17233d);
