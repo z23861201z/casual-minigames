@@ -8,7 +8,8 @@
     "Particle PNGs are white RGB with shaped alpha so canvases can tint them.",
     "Runner anchor: feet near 92% height, back view, two run frames.",
     "Monster anchor: body centered, feet/base near 88% height.",
-    "Door aspect 3:4. Gameplay numbers are drawn by the canvas, not baked."
+    "Door aspect 3:4. Gameplay numbers are drawn by the canvas, not baked.",
+    "Three-game kit from tools/gen_three_assets.py is procedural Pillow only."
   ],
   "slices": {
     "ui/hud-frame.png": 64,
@@ -69,7 +70,27 @@
     "ui/hud-chip.png",
     "ui/hud-frame.png",
     "ui/progress-fill.png",
-    "ui/progress-track.png"
+    "ui/progress-track.png",
+    "hub/cover-sand.png",
+    "hub/cover-duck.png",
+    "hub/cover-doom.png",
+    "sand-bucket/shovel.png",
+    "sand-bucket/rainbow.png",
+    "sand-bucket/magnet.png",
+    "doom-gates/soldier-0.png",
+    "doom-gates/soldier-1.png",
+    "doom-gates/zombie.png",
+    "doom-gates/brute.png",
+    "duck-pop/duck-0.png",
+    "duck-pop/duck-1.png",
+    "duck-pop/duck-2.png",
+    "duck-pop/duck-3.png",
+    "duck-pop/duck-4.png",
+    "duck-pop/duck-5.png",
+    "duck-pop/duck-6.png",
+    "duck-pop/duck-7.png",
+    "duck-pop/duck-8.png",
+    "duck-pop/duck-9.png"
   ],
   "check_problems": []
 }

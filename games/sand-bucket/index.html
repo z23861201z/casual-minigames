@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#FFE3C4" />
+  <title>拼图解压馆 · 流沙接桶</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="cv"></canvas>
+    <header id="hud">
+      <a class="round" href="../../index.html" aria-label="返回合集">←</a>
+      <div class="hud-mid">
+        <div id="lv">拼图解压馆</div>
+        <div class="track"><div id="fill"></div></div>
+      </div>
+      <div class="hud-right">
+        <div>
+          <b id="score">0</b>
+          <small id="spill"></small>
+        </div>
+        <button id="pause" type="button" aria-label="暂停" hidden>❚❚</button>
+      </div>
+    </header>
+    <div id="combo"></div>
+    <div id="banner"></div>
+    <button id="merge" type="button" hidden>合成</button>
+    <div id="floats"></div>
+    <div id="overlay"></div>
+    <div id="err"></div>
+  </div>
+  <script src="js/levels.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

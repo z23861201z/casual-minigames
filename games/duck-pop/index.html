@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#D7F2FF" />
+  <title>消除我可以 · 鸭子发射</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="cv"></canvas>
+    <header id="hud">
+      <a class="round" href="../../index.html" aria-label="返回合集">←</a>
+      <div class="hud-mid">
+        <div id="lv">消除我可以</div>
+        <div id="sub">点鸭子，再点同色那一列</div>
+      </div>
+      <div class="hud-right">
+        <b id="stars">★0</b>
+        <button id="pause" type="button" aria-label="暂停" hidden>❚❚</button>
+      </div>
+    </header>
+    <div id="combo"></div>
+    <div id="banner"></div>
+    <div id="tools">
+      <button type="button" data-act="speed">2倍速</button>
+      <button type="button" data-act="upgrade">升级</button>
+      <button type="button" data-act="clear">清除</button>
+      <button type="button" data-act="shuffle">打乱</button>
+    </div>
+    <div id="floats"></div>
+    <div id="overlay"></div>
+    <div id="err"></div>
+  </div>
+  <script src="js/levels.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

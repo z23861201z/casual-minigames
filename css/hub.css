@@ -457,11 +457,14 @@ code {
   80% { transform: translateX(120%); }
   100% { transform: translateX(120%); }
 }
-.cover-gate {
-  background: #0a0e27 url("../assets/hub/cover-number-gate.png") center / cover no-repeat;
+.cover-sand {
+  background: #ffe3c4 url("../assets/hub/cover-sand.png") center / cover no-repeat;
 }
-.cover-samegame {
-  background: #1a1030 url("../assets/hub/cover-samegame.png") center / cover no-repeat;
+.cover-duck {
+  background: #d7f2ff url("../assets/hub/cover-duck.png") center / cover no-repeat;
+}
+.cover-doom {
+  background: #8eb6e0 url("../assets/hub/cover-doom.png") center / cover no-repeat;
 }
 .cover-soon {
   background: #12182c url("../assets/hub/cover-soon.png") center / cover no-repeat;

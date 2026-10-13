@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#1a2744" />
+  <title>向末日开炮 · 数字门</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="cv"></canvas>
+    <div id="hurt"></div>
+    <header id="hud">
+      <a class="round" href="../../index.html" aria-label="返回合集">←</a>
+      <div id="goal">向末日开炮</div>
+      <button id="pause" type="button" aria-label="暂停" hidden>❚❚</button>
+    </header>
+    <div id="squad-wrap">
+      <div id="squad-num">1</div>
+      <div id="squad-label">小队人数</div>
+    </div>
+    <div id="banner">左右滑动选门 · 子弹能把数字改得更赚</div>
+    <div id="hint">按住滑动</div>
+    <div id="floats"></div>
+    <div id="overlay"></div>
+    <div id="err"></div>
+  </div>
+  <script src="js/levels.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
