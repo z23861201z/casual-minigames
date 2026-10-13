@@ -21,19 +21,17 @@
           '<div class="ng-hud-top">' +
             '<button type="button" class="ng-icon-btn" id="ng-pause" aria-label="暂停">❚❚</button>' +
             '<div class="ng-hud-stats">' +
+              '<div class="ng-stat ng-stat-power"><span class="ng-stat-l">力量</span><span id="hud-power">0</span></div>' +
               '<div class="ng-stat"><span class="ng-stat-l">分数</span><span id="hud-score">0</span></div>' +
               '<div class="ng-stat"><span class="ng-stat-l">距离</span><span id="hud-dist">0</span></div>' +
               '<div class="ng-stat"><span class="ng-stat-l">关卡</span><span id="hud-level">1</span></div>' +
             '</div>' +
             '<button type="button" class="ng-icon-btn" id="ng-mute" aria-label="静音">🔊</button>' +
           '</div>' +
-          '<div class="ng-power-wrap">' +
-            '<div class="ng-power-label">力量</div>' +
-            '<div class="ng-power" id="hud-power">0</div>' +
-            '<div class="ng-badges">' +
-              '<span id="hud-shield" class="ng-badge" hidden>🛡 护盾</span>' +
-              '<span id="hud-mult" class="ng-badge ng-badge-mult" hidden>×</span>' +
-            '</div>' +
+          '<div class="ng-goal" id="ng-goal" hidden><div class="ng-goal-fill" id="ng-goal-fill"></div></div>' +
+          '<div class="ng-float-badges">' +
+            '<span id="hud-shield" class="ng-badge" hidden>护盾</span>' +
+            '<span id="hud-mult" class="ng-badge ng-badge-mult" hidden>×</span>' +
           '</div>' +
         '</div>' +
         '<div class="ng-touch" id="ng-touch" hidden>' +
@@ -43,8 +41,10 @@
         '<div class="ng-overlay" id="ng-menu">' +
           '<div class="ng-card">' +
             '<a class="ng-back" href="../../index.html">← 合集首页</a>' +
+            '<div class="ng-kicker">伪 3D · 广告级手感</div>' +
             '<div class="ng-logo">NUMBER GATE</div>' +
-            '<p class="ng-tagline">左右选门 · 数值碾压 · 打怪狂奔<br/>广告级伪 3D 跑酷体验</p>' +
+            '<p class="ng-tagline">自动冲刺，左右撞门。力量暴涨，人数堆起来，把怪物的数字碾过去。</p>' +
+            '<div class="ng-pills"><span>+ 加法</span><span>× 倍率</span><span>护盾</span><span>击飞</span></div>' +
             '<div class="ng-menu-actions">' +
               '<button type="button" class="ng-btn ng-btn-primary" id="btn-play">▶ 开始战役</button>' +
               '<button type="button" class="ng-btn" id="btn-endless">∞ 无尽模式</button>' +
@@ -76,6 +76,7 @@
     var ids = [
       'ng-canvas', 'ng-hud', 'ng-touch', 'ng-menu', 'ng-pause-menu', 'ng-end',
       'hud-score', 'hud-dist', 'hud-level', 'hud-power', 'hud-shield', 'hud-mult',
+      'ng-goal', 'ng-goal-fill',
       'ng-pause', 'ng-mute', 'btn-left', 'btn-right',
       'btn-play', 'btn-endless', 'level-picker',
       'btn-resume', 'btn-restart', 'btn-to-menu',
@@ -156,7 +157,7 @@
   UI.prototype.showEnd = function (won, state, hasNext) {
     this.els['ng-end'].hidden = false;
     this.els['ng-touch'].hidden = true;
-    this.els['end-title'].textContent = won ? '通关！' : '再试一次';
+    this.els['end-title'].textContent = won ? '通关' : '再冲一次';
     this.els['end-title'].className = 'ng-logo sm' + (won ? ' win' : ' lose');
     this.els['end-stats'].innerHTML =
       '<div>分数 <b>' + Math.floor(state.score) + '</b></div>' +
@@ -185,6 +186,17 @@
       this._lastPower = state.power;
     } else {
       powerEl.textContent = pStr;
+    }
+    var goal = this.els['ng-goal'];
+    var fill = this.els['ng-goal-fill'];
+    if (goal && fill) {
+      if (state.isEndless || !state.targetDistance) {
+        goal.hidden = true;
+      } else {
+        goal.hidden = false;
+        var pct = Math.max(0, Math.min(100, (state.distance / state.targetDistance) * 100));
+        fill.style.width = pct.toFixed(1) + '%';
+      }
     }
     this.els['hud-shield'].hidden = !state.shield;
     if (state.scoreMult > 1) {

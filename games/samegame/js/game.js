@@ -44,11 +44,12 @@
       initialCells: SameGameCore.countColorCells(board)
     };
 
-    renderer.setColors(levelsData.colors);
-    renderer.setBoard(board);
     particles.clear();
     inputLocked = false;
     ui.show('game');
+    renderer.setColors(levelsData.colors);
+    renderer.setBoard(board);
+    renderer.resize();
     ui.updateHud(hudPayload());
     if (lv.tutorial) {
       ui.toast('点击相连的同色方块（至少 2 个）');
@@ -151,7 +152,7 @@
     var cent = SameGameCore.centroid(result.cells);
     renderer.addFloat('+' + result.scoreGain, cent.row, cent.col, levelsData.colors[result.cells[0].color]);
     renderer.showCombo(result.combo);
-    var shake = Math.min(20, 3.5 + Math.log2(Math.max(2, result.n)) * 2.8 + (result.combo - 1) * 1.2);
+    var shake = Math.min(28, 6 + Math.log2(Math.max(2, result.n)) * 3.6 + (result.combo - 1) * 1.8);
     renderer.addShake(shake);
     particles.burst(result.cells, renderer.cellSize, renderer.offsetX, renderer.offsetY, levelsData.colors);
     if (result.cleared) audio.playClear();

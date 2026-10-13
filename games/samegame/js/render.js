@@ -87,12 +87,12 @@
       text: text,
       x: this.offsetX + (col + 0.5) * this.cellSize,
       y: this.offsetY + (row + 0.5) * this.cellSize,
-      vy: -70,
-      life: 0.9,
-      maxLife: 0.9,
+      vy: -90,
+      life: 0.95,
+      maxLife: 0.95,
       color: color || '#fff',
-      size: 24,
-      pop: 1.5
+      size: 30,
+      pop: 1.7
     });
   };
 
@@ -220,76 +220,119 @@
     if (this.particles) this.particles.update(dt);
   };
 
+  BoardRenderer.prototype._drawSlot = function (ctx, x, y) {
+    var s = this.cellSize;
+    var gap = Math.max(2, s * 0.1);
+    var sz = s - gap;
+    var ox = x + (s - sz) / 2;
+    var oy = y + (s - sz) / 2;
+    var r = Math.max(5, sz * 0.2);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    this._roundRect(ctx, ox, oy + 1, sz, sz, r);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    this._roundRect(ctx, ox, oy, sz, sz, r);
+    ctx.stroke();
+  };
+
   BoardRenderer.prototype._drawCell = function (ctx, x, y, value, scale, highlight) {
     var s = this.cellSize;
     var gap = Math.max(2, s * 0.1);
     var sz = (s - gap) * (scale != null ? scale : 1);
     var ox = x + (s - sz) / 2;
     var oy = y + (s - sz) / 2;
-    var r = Math.max(6, sz * 0.22);
+    if (highlight) oy -= Math.max(1, s * 0.04);
+    var r = Math.max(6, sz * 0.24);
     ctx.save();
-    // drop shadow under tile
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    this._roundRect(ctx, ox + 1.5, oy + 2.5, sz, sz, r);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    this._roundRect(ctx, ox + 1, oy + 3, sz, sz, r);
     ctx.fill();
 
     var base = value === SameGameCore.STONE ? this.stoneColor : (this.colors[value] || '#888');
     if (value === SameGameCore.STONE) {
       var sg = ctx.createLinearGradient(ox, oy, ox + sz, oy + sz);
-      sg.addColorStop(0, '#7a8494');
-      sg.addColorStop(0.5, this.stoneColor);
-      sg.addColorStop(1, '#3a4250');
+      sg.addColorStop(0, '#9aa3b2');
+      sg.addColorStop(0.45, '#6b7280');
+      sg.addColorStop(1, '#2f3542');
       ctx.fillStyle = sg;
       this._roundRect(ctx, ox, oy, sz, sz, r);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      ctx.lineWidth = 2;
-      this._roundRect(ctx, ox, oy, sz, sz, r);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.5;
+      this._roundRect(ctx, ox + 1, oy + 1, sz - 2, sz - 2, r);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      this._roundRect(ctx, ox + sz * 0.15, oy + sz * 0.12, sz * 0.7, sz * 0.18, r * 0.4);
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = Math.max(1, sz * 0.045);
+      ctx.beginPath();
+      ctx.moveTo(ox + sz * 0.22, oy + sz * 0.3);
+      ctx.lineTo(ox + sz * 0.48, oy + sz * 0.55);
+      ctx.lineTo(ox + sz * 0.78, oy + sz * 0.28);
+      ctx.moveTo(ox + sz * 0.3, oy + sz * 0.7);
+      ctx.lineTo(ox + sz * 0.62, oy + sz * 0.48);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath();
+      ctx.arc(ox + sz * 0.28, oy + sz * 0.22, Math.max(1.5, sz * 0.06), 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // body radial gradient
-      var rg = ctx.createRadialGradient(ox + sz * 0.3, oy + sz * 0.25, sz * 0.05, ox + sz * 0.5, oy + sz * 0.55, sz * 0.75);
-      rg.addColorStop(0, shadeHex(base, 0.35));
-      rg.addColorStop(0.55, base);
-      rg.addColorStop(1, shadeHex(base, -0.35));
-      ctx.fillStyle = rg;
+      /* Bevel: bright lip, body, dark foot. */
+      var body = ctx.createLinearGradient(ox, oy, ox, oy + sz);
+      body.addColorStop(0, shadeHex(base, 0.42));
+      body.addColorStop(0.18, shadeHex(base, 0.12));
+      body.addColorStop(0.55, base);
+      body.addColorStop(1, shadeHex(base, -0.42));
+      ctx.fillStyle = body;
       this._roundRect(ctx, ox, oy, sz, sz, r);
       ctx.fill();
-      // specular highlight bar
-      var hg = ctx.createLinearGradient(ox, oy, ox, oy + sz * 0.45);
-      hg.addColorStop(0, 'rgba(255,255,255,0.55)');
-      hg.addColorStop(0.4, 'rgba(255,255,255,0.12)');
-      hg.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = hg;
-      this._roundRect(ctx, ox + 2, oy + 2, sz - 4, sz * 0.38, r * 0.6);
+
+      var gloss = ctx.createLinearGradient(ox, oy, ox, oy + sz * 0.48);
+      gloss.addColorStop(0, 'rgba(255,255,255,0.72)');
+      gloss.addColorStop(0.45, 'rgba(255,255,255,0.16)');
+      gloss.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gloss;
+      this._roundRect(ctx, ox + sz * 0.1, oy + sz * 0.08, sz * 0.8, sz * 0.36, r * 0.7);
       ctx.fill();
-      // rim light
-      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.ellipse(ox + sz * 0.3, oy + sz * 0.22, sz * 0.12, sz * 0.07, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* Inner gem facet. */
+      ctx.fillStyle = hexA(shadeHex(base, -0.25), 0.45);
+      this._roundRect(ctx, ox + sz * 0.18, oy + sz * 0.42, sz * 0.64, sz * 0.4, r * 0.45);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.38)';
       ctx.lineWidth = 1.5;
-      this._roundRect(ctx, ox + 1, oy + 1, sz - 2, sz - 2, r - 1);
+      this._roundRect(ctx, ox + 1.2, oy + 1.2, sz - 2.4, sz - 2.4, Math.max(2, r - 1));
       ctx.stroke();
-      // bottom shade
-      ctx.fillStyle = 'rgba(0,0,0,0.18)';
-      this._roundRect(ctx, ox + 2, oy + sz * 0.62, sz - 4, sz * 0.32, r * 0.4);
-      ctx.fill();
+      ctx.strokeStyle = hexA(shadeHex(base, -0.55), 0.65);
+      ctx.lineWidth = Math.max(1, sz * 0.035);
+      this._roundRect(ctx, ox + sz * 0.06, oy + sz * 0.06, sz * 0.88, sz * 0.88, r * 0.75);
+      ctx.stroke();
     }
     if (highlight) {
-      ctx.shadowColor = base;
-      ctx.shadowBlur = 14;
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.strokeStyle = '#fff';
       ctx.lineWidth = Math.max(2.5, s * 0.07);
       this._roundRect(ctx, ox - 2, oy - 2, sz + 4, sz + 4, r + 2);
       ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
       this._roundRect(ctx, ox, oy, sz, sz, r);
       ctx.fill();
     }
     ctx.restore();
   };
+
+  function hexA(hex, a) {
+    hex = String(hex).replace('#', '');
+    if (hex.length < 6) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    var r = parseInt(hex.substr(0, 2), 16);
+    var g = parseInt(hex.substr(2, 2), 16);
+    var b = parseInt(hex.substr(4, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
 
   function shadeHex(hex, lum) {
     hex = String(hex).replace(/[^0-9a-f]/gi, '');
@@ -316,9 +359,21 @@
 
   BoardRenderer.prototype.draw = function () {
     var ctx = this.ctx;
+    var cw = this.canvas.clientWidth;
+    if ((!this.viewW || !this.viewH || (cw > 40 && Math.abs(cw - this.viewW) > 2)) && cw > 40) this._layout();
     var w = this.viewW, h = this.viewH;
+    if (!w || !h || !isFinite(w) || !isFinite(h)) return;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = this.bg;
+    var bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#12162a');
+    bg.addColorStop(0.4, '#0c101c');
+    bg.addColorStop(1, '#090b14');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+    var glow = ctx.createRadialGradient(w * 0.5, h * 0.15, 10, w * 0.5, h * 0.2, w * 0.7);
+    glow.addColorStop(0, 'rgba(91,156,255,0.16)');
+    glow.addColorStop(1, 'rgba(91,156,255,0)');
+    ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
 
     // board panel
@@ -334,14 +389,22 @@
     ctx.save();
     ctx.translate(sx, sy);
 
-    // panel bg
-    ctx.fillStyle = '#151a2a';
-    this._roundRect(ctx, this.offsetX - 8, this.offsetY - 8, bw + 16, bh + 16, 16);
+    var panel = ctx.createLinearGradient(0, this.offsetY, 0, this.offsetY + bh);
+    panel.addColorStop(0, '#1c2438');
+    panel.addColorStop(1, '#121826');
+    ctx.fillStyle = panel;
+    this._roundRect(ctx, this.offsetX - 10, this.offsetY - 10, bw + 20, bh + 20, 18);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
     ctx.lineWidth = 1.5;
-    this._roundRect(ctx, this.offsetX - 8, this.offsetY - 8, bw + 16, bh + 16, 16);
+    this._roundRect(ctx, this.offsetX - 10, this.offsetY - 10, bw + 20, bh + 20, 18);
     ctx.stroke();
+
+    for (var sr = 0; sr < rows; sr++) {
+      for (var sc2 = 0; sc2 < cols; sc2++) {
+        this._drawSlot(ctx, this.offsetX + sc2 * this.cellSize, this.offsetY + sr * this.cellSize);
+      }
+    }
 
     var hoverSet = {};
     if (this.hover) {
@@ -409,13 +472,13 @@
     for (var fi = 0; fi < this.floats.length; fi++) {
       var fl = this.floats[fi];
       var a = fl.life / fl.maxLife;
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = Math.min(1, a * 1.15);
       ctx.fillStyle = fl.color;
-      var fsz = (fl.size + (1 - a) * 10) * (fl.pop || 1);
+      var fsz = Math.floor((fl.size || 28) * (fl.pop || 1));
       ctx.font = '900 ' + fsz + 'px system-ui,sans-serif';
       ctx.textAlign = 'center';
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = Math.max(4, fsz * 0.12);
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
       ctx.strokeText(fl.text, fl.x, fl.y);
       ctx.fillText(fl.text, fl.x, fl.y);
       ctx.globalAlpha = 1;
@@ -423,21 +486,23 @@
 
     if (this.comboPop) {
       var cp = this.comboPop;
-      var ca = Math.min(1, cp.life / 0.2) * Math.min(1, (cp.maxLife - cp.life) / 0.15 + 0.5);
-      ctx.globalAlpha = Math.min(1, ca);
-      ctx.fillStyle = cp.n >= 4 ? '#FF6B35' : '#FFD93D';
-      var csz = 40 + Math.min(cp.n, 8) * 4;
-      var popScale = 1 + (1 - cp.life / cp.maxLife) * 0.15;
+      var age = 1 - cp.life / cp.maxLife;
+      var ca = age < 0.12 ? age / 0.12 : Math.min(1, cp.life / 0.25);
+      ctx.globalAlpha = Math.max(0, Math.min(1, ca));
+      var word = cp.n >= 5 ? 'INSANE' : cp.n >= 3 ? 'GREAT' : 'COMBO';
+      var csz = 36 + Math.min(cp.n, 8) * 5;
+      var popScale = age < 0.18 ? 0.7 + (age / 0.18) * 0.7 : 1.4 - age * 0.35;
       ctx.font = '900 ' + csz + 'px system-ui,sans-serif';
       ctx.textAlign = 'center';
-      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-      ctx.lineWidth = 6;
-      var tx = w / 2, ty = h * 0.2;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 8;
+      var tx = w / 2, ty = Math.max(72, h * 0.16);
       ctx.save();
       ctx.translate(tx, ty);
       ctx.scale(popScale, popScale);
-      ctx.strokeText('COMBO ×' + cp.n, 0, 0);
-      ctx.fillText('COMBO ×' + cp.n, 0, 0);
+      ctx.strokeText(word + ' ×' + cp.n, 0, 0);
+      ctx.fillStyle = cp.n >= 4 ? '#ff7a45' : '#ffe566';
+      ctx.fillText(word + ' ×' + cp.n, 0, 0);
       ctx.restore();
       ctx.globalAlpha = 1;
     }

@@ -13,11 +13,13 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body {
   margin: 0; padding: 0; height: 100%;
   background:
-    radial-gradient(1000px 500px at 50% -8%, #243056 0%, transparent 55%),
-    radial-gradient(600px 400px at 100% 100%, rgba(255,77,109,0.12), transparent 45%),
+    radial-gradient(900px 480px at 15% -10%, rgba(91,156,255,0.28), transparent 55%),
+    radial-gradient(700px 420px at 100% 0%, rgba(255,77,109,0.2), transparent 50%),
+    radial-gradient(600px 400px at 80% 100%, rgba(107,203,119,0.12), transparent 45%),
     var(--bg);
   color: var(--text);
   overflow: hidden;
@@ -27,6 +29,22 @@ html, body {
 }
 
 #app { height: 100%; position: relative; }
+.hub-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 40;
+  color: #dbe4ff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(8,10,18,0.72);
+  backdrop-filter: blur(10px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.hub-link:hover { border-color: rgba(91,156,255,0.6); color: #fff; }
 
 .screen {
   position: absolute; inset: 0;
@@ -61,6 +79,19 @@ html, body {
   text-align: center;
   animation: cardIn 0.32s cubic-bezier(0.22,1,0.36,1);
   backdrop-filter: blur(16px);
+}
+.kicker {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ec5ff;
+  border: 1px solid rgba(91,156,255,0.35);
+  background: rgba(91,156,255,0.12);
 }
 .panel.hero h1 {
   margin: 0 0 8px;
@@ -167,8 +198,25 @@ html, body {
   padding: 6px 4px;
 }
 .hud-stats .k { display: block; font-size: 0.68rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
-.hud-stats span:not(.k) { font-size: 1.1rem; font-weight: 800; }
+.hud-stats span:not(.k) { font-size: 1.15rem; font-weight: 800; }
 .hud-stats .warn { color: var(--accent2); }
+#hud-score.pop { display: inline-block; animation: scorePop 0.22s cubic-bezier(0.2, 1.5, 0.4, 1); }
+#hud-combo.hot { color: #ffd93d; text-shadow: 0 0 12px rgba(255,217,61,0.7); }
+@keyframes scorePop {
+  40% { transform: scale(1.28); }
+}
+#result-title.win {
+  background: linear-gradient(100deg, #6bcb77, #ffd93d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+#result-title.lose {
+  background: linear-gradient(100deg, #ff4d6d, #ff8c42);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .progress-wrap {
   margin-top: 10px; height: 10px; border-radius: 99px;
   background: rgba(255,255,255,0.08); overflow: hidden;

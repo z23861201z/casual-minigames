@@ -1,227 +1,257 @@
 /**
- * Canvas renderer — ad-grade pseudo-3D Number Gate Runner.
+ * Canvas renderer — Count-Masters style pseudo-3D corridor.
+ * Presentation only. Core math stays in core.js.
  */
 (function (global) {
   'use strict';
 
   var GATE_COLORS = {
     add: '#22c55e',
-    mul: '#a855f7',
+    mul: '#c084fc',
     sub: '#ef4444',
-    div: '#dc2626',
-    bomb: '#f97316',
-    shield: '#14b8a6',
-    scoreMul: '#ec4899',
-    shieldBreak: '#14b8a6'
+    div: '#fb7185',
+    bomb: '#fb923c',
+    shield: '#2dd4bf',
+    scoreMul: '#f472b6',
+    shieldBreak: '#2dd4bf'
   };
 
   var ENEMY_COLORS = {
-    grunt: '#ff5c7a',
+    grunt: '#ff4d6d',
     elite: '#fbbf24',
-    boss: '#c084fc'
+    boss: '#d8b4fe'
   };
+
+  var CROWD_COLORS = ['#22d3ee', '#38bdf8', '#818cf8', '#e879f9', '#67e8f9', '#a5b4fc'];
 
   function Renderer(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.w = 420;
-    this.h = 720;
+    this.w = 960;
+    this.h = 640;
     this.dpr = 1;
-    this.bgPhase = 0;
+    this._spd = 0;
+    this._m = null;
     this.powerPulse = 1;
     this.powerPulseVel = 0;
-    this.displayPower = 0;
     this.comboFlash = 0;
+    this.flashA = 0;
+    this.flashColor = '#ffffff';
+    this.dust = [];
     this.speedLines = [];
-    for (var i = 0; i < 36; i++) {
+    for (var i = 0; i < 42; i++) {
       this.speedLines.push({
-        x: Math.random(),
-        y: Math.random(),
-        len: 0.03 + Math.random() * 0.08,
-        sp: 0.6 + Math.random() * 1.2,
+        ang: (Math.random() - 0.5) * 1.15,
+        u: Math.random(),
+        w: 1 + Math.random() * 2.2,
         side: Math.random() < 0.5 ? -1 : 1
       });
     }
-    this.tiles = [];
+    this._crowdN = -1;
+    this._crowd = [];
   }
 
   Renderer.prototype.resize = function () {
     var parent = this.canvas.parentElement;
     var pw = parent ? parent.clientWidth : window.innerWidth;
     var ph = parent ? parent.clientHeight : window.innerHeight;
-    // Fill available space; prefer landscape-ish on desktop, tall on mobile
-    var maxW = Math.min(pw, 720);
-    var maxH = Math.min(ph, 900);
-    var tw = maxW;
-    var th = maxH;
-    // Keep playable aspect ~ between 9:16 and 3:4
-    var aspect = tw / th;
-    if (aspect < 0.48) {
-      tw = th * 0.52;
-    } else if (aspect > 0.85) {
-      // Desktop wide: cap width relative to height so road still reads
-      tw = Math.min(tw, th * 0.72);
+    var tw;
+    var th;
+    if (pw >= ph) {
+      /* Desktop / landscape: a wide stage, not a tall phone column. */
+      th = Math.max(480, Math.min(ph - 12, 820));
+      tw = Math.min(pw - 20, 1180, Math.max(860, th * 1.18));
+    } else {
+      tw = pw;
+      th = ph;
+      if (tw / th < 0.5) tw = Math.min(pw, th * 0.58);
     }
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.w = Math.max(320, Math.floor(tw));
-    this.h = Math.max(480, Math.floor(th));
+    this.h = Math.max(420, Math.floor(th));
     this.canvas.style.width = this.w + 'px';
     this.canvas.style.height = this.h + 'px';
     this.canvas.width = Math.floor(this.w * this.dpr);
     this.canvas.height = Math.floor(this.h * this.dpr);
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this._m = null;
+  };
+
+  Renderer.prototype.metrics = function () {
+    if (this._m) return this._m;
+    var widen = 1 + this._spd * 0.1;
+    this._m = {
+      nearY: this.h * 0.9,
+      farY: this.h * 0.3,
+      nearHalf: this.w * 0.46 * widen,
+      farHalf: Math.max(16, this.w * 0.05)
+    };
+    return this._m;
   };
 
   Renderer.prototype.project = function (relZ, lane, lanes) {
-    var view = 720;
-    var t = Math.max(0, Math.min(1, relZ / view));
-    var nearY = this.h * 0.84;
-    var farY = this.h * 0.10;
-    var depth = 1 - t;
-    var y = farY + (nearY - farY) * Math.pow(depth, 0.78);
-    var scale = 0.22 + 0.78 * Math.pow(depth, 0.9);
-    var roadHalfNear = this.w * 0.44;
-    var roadHalfFar = this.w * 0.08;
-    var roadHalf = roadHalfFar + (roadHalfNear - roadHalfFar) * depth;
+    var m = this.metrics();
+    var t = Math.max(0, Math.min(1, relZ / 660));
+    var depth = Math.pow(1 - t, 1.18);
+    var y = m.farY + (m.nearY - m.farY) * depth;
+    var scale = 0.14 + 1.02 * Math.pow(depth, 1.08);
+    var roadHalf = m.farHalf + (m.nearHalf - m.farHalf) * depth;
     var laneCount = lanes || 3;
     var laneW = (roadHalf * 2) / laneCount;
-    var cx = this.w / 2;
-    var x = cx - roadHalf + laneW * (lane + 0.5);
-    return { x: x, y: y, scale: scale, roadHalf: roadHalf, depth: depth };
+    var x = this.w / 2 - roadHalf + laneW * (lane + 0.5);
+    return { x: x, y: y, scale: scale, roadHalf: roadHalf, depth: depth, laneW: laneW };
   };
 
   Renderer.prototype.laneXAt = function (lane, lanes, depth) {
-    var roadHalfNear = this.w * 0.44;
-    var roadHalfFar = this.w * 0.08;
-    var roadHalf = roadHalfFar + (roadHalfNear - roadHalfFar) * depth;
+    var m = this.metrics();
+    var roadHalf = m.farHalf + (m.nearHalf - m.farHalf) * depth;
     var laneW = (roadHalf * 2) / (lanes || 3);
     return this.w / 2 - roadHalf + laneW * (lane + 0.5);
   };
 
-  Renderer.prototype.pulsePower = function (target) {
-    this.powerPulseVel = 0.55;
-    this.displayPower = target;
+  Renderer.prototype.pulsePower = function () {
+    this.powerPulseVel = 0.62;
+  };
+
+  Renderer.prototype.addFlash = function (color, amt) {
+    this.flashA = Math.min(0.5, Math.max(this.flashA || 0, amt || 0.2));
+    this.flashColor = color || '#ffffff';
   };
 
   Renderer.prototype.drawBackground = function (state, dt) {
     var ctx = this.ctx;
-    var w = this.w, h = this.h;
+    var w = this.w;
+    var h = this.h;
+    var m = this.metrics();
     var g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#050816');
-    g.addColorStop(0.35, '#0c1238');
-    g.addColorStop(0.65, '#1a0f45');
-    g.addColorStop(1, '#2a1050');
+    g.addColorStop(0, '#07061a');
+    g.addColorStop(0.28, '#14123a');
+    g.addColorStop(0.48, '#2a1460');
+    g.addColorStop(0.62, '#3a1d55');
+    g.addColorStop(1, '#12081f');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
-    // nebula glow
-    var ng = ctx.createRadialGradient(w * 0.5, h * 0.12, 10, w * 0.5, h * 0.12, w * 0.55);
-    ng.addColorStop(0, 'rgba(120,60,255,0.35)');
-    ng.addColorStop(0.5, 'rgba(0,180,255,0.08)');
-    ng.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = ng;
-    ctx.fillRect(0, 0, w, h * 0.5);
+    var sun = ctx.createRadialGradient(w * 0.5, m.farY, 8, w * 0.5, m.farY, w * 0.42);
+    sun.addColorStop(0, 'rgba(255,186,92,0.55)');
+    sun.addColorStop(0.25, 'rgba(192,90,255,0.28)');
+    sun.addColorStop(0.6, 'rgba(34,211,238,0.06)');
+    sun.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, w, h * 0.7);
 
-    // stars
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    for (var i = 0; i < 55; i++) {
-      var sx = ((i * 97 + state.distance * 0.015) % w + w) % w;
-      var sy = ((i * 53 + Math.sin(i) * 20) % (h * 0.42) + h * 0.42) % (h * 0.42);
-      var sr = (i % 3 === 0) ? 2.2 : 1.2;
-      ctx.globalAlpha = 0.25 + (i % 5) * 0.12;
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
+    /* Stars drift with speed. */
+    var drift = state.distance * 0.02;
+    for (var i = 0; i < 48; i++) {
+      var sx = ((i * 97 + drift * (0.3 + (i % 5) * 0.1)) % w + w) % w;
+      var sy = (i * 37) % (m.farY * 0.92);
+      ctx.globalAlpha = 0.2 + (i % 4) * 0.15;
+      ctx.fillStyle = i % 6 === 0 ? '#fde68a' : '#e0f2fe';
+      ctx.fillRect(sx, sy, i % 5 === 0 ? 2.2 : 1.3, i % 5 === 0 ? 2.2 : 1.3);
     }
     ctx.globalAlpha = 1;
 
-    this.bgPhase += (state.speed || 100) * dt * 0.012;
-    var spd = (state.speed || 100) / 180;
+    /* Skyline along the horizon. */
+    for (var b = 0; b < 22; b++) {
+      var bx = ((b * 83 - drift * 8) % (w + 80) + w + 80) % (w + 80) - 40;
+      var bh = 16 + ((b * 29) % 58);
+      ctx.fillStyle = 'rgba(8,6,24,0.92)';
+      ctx.fillRect(bx, m.farY - bh, 22 + (b % 3) * 8, bh);
+      if (b % 2 === 0) {
+        ctx.fillStyle = (b % 4 === 0) ? 'rgba(253,224,71,0.85)' : 'rgba(125,211,252,0.75)';
+        ctx.fillRect(bx + 5, m.farY - bh + 7, 3, 3);
+        ctx.fillRect(bx + 12, m.farY - bh + 16, 3, 3);
+      }
+    }
+
+    /* Speed rays bursting from the vanishing point. */
+    var spd = 0.35 + this._spd * 1.4;
+    var vpX = w * 0.5;
+    var vpY = m.farY;
     for (var j = 0; j < this.speedLines.length; j++) {
       var sl = this.speedLines[j];
-      sl.y += spd * sl.sp * dt * 2.2;
-      if (sl.y > 1.2) {
-        sl.y = -0.15;
-        sl.x = 0.05 + Math.random() * 0.9;
-      }
-      var x = sl.x * w;
-      var y = sl.y * h;
-      var edge = Math.abs(sl.x - 0.5);
-      ctx.strokeStyle = 'rgba(140,210,255,' + (0.06 + 0.22 * spd * edge) + ')';
-      ctx.lineWidth = 1.5 + spd;
+      sl.u += dt * (0.55 + this._spd * 1.8) * (0.6 + (j % 5) * 0.12);
+      if (sl.u > 1) sl.u -= 1;
+      var reach = 80 + sl.u * Math.max(w, h) * 0.72;
+      var ang = sl.ang + sl.side * 0.15;
+      var x0 = vpX + Math.sin(ang) * (30 + sl.u * 40);
+      var y0 = vpY + sl.u * 24;
+      var x1 = vpX + Math.sin(ang) * reach;
+      var y1 = vpY + Math.cos(ang * 0.35) * sl.u * h * 0.55 + sl.u * 40;
+      /* Keep rays mostly outside the road so the gates stay readable. */
+      if (Math.abs(x1 - vpX) < w * 0.18 && y1 < h * 0.75) continue;
+      ctx.strokeStyle = 'rgba(186,230,253,' + (0.04 + 0.22 * sl.u * spd) + ')';
+      ctx.lineWidth = sl.w * (0.6 + sl.u * spd);
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + sl.side * 4 * spd, y + sl.len * h * (0.6 + spd));
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
       ctx.stroke();
     }
   };
 
-  Renderer.prototype.drawSideWalls = function (state) {
+  Renderer.prototype.drawWalls = function (state) {
     var ctx = this.ctx;
-    var w = this.w, h = this.h;
-    var nearY = h * 0.88;
-    var farY = h * 0.10;
+    var w = this.w;
+    var h = this.h;
+    var m = this.metrics();
     var cx = w / 2;
-    var nearHalf = w * 0.44;
-    var farHalf = w * 0.08;
-    var wallOut = w * 0.02;
 
-    // left wall
-    var lg = ctx.createLinearGradient(0, 0, cx - nearHalf, 0);
-    lg.addColorStop(0, 'rgba(40,20,80,0.85)');
-    lg.addColorStop(1, 'rgba(20,10,40,0.15)');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.moveTo(0, farY - 20);
-    ctx.lineTo(cx - farHalf, farY);
-    ctx.lineTo(cx - nearHalf, nearY);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-    ctx.fill();
-
-    // right wall
-    var rg = ctx.createLinearGradient(w, 0, cx + nearHalf, 0);
-    rg.addColorStop(0, 'rgba(40,20,80,0.85)');
-    rg.addColorStop(1, 'rgba(20,10,40,0.15)');
-    ctx.fillStyle = rg;
-    ctx.beginPath();
-    ctx.moveTo(w, farY - 20);
-    ctx.lineTo(cx + farHalf, farY);
-    ctx.lineTo(cx + nearHalf, nearY);
-    ctx.lineTo(w, h);
-    ctx.closePath();
-    ctx.fill();
-
-    // wall ribs scrolling
-    var scroll = (state.distance * 0.25) % 50;
-    ctx.strokeStyle = 'rgba(100,60,200,0.25)';
-    ctx.lineWidth = 2;
-    for (var i = 0; i < 12; i++) {
-      var t = (i / 12 + scroll / 600) % 1;
-      var depth = Math.pow(1 - t, 0.85);
-      var y = farY + (nearY - farY) * depth;
-      var half = farHalf + (nearHalf - farHalf) * depth;
-      ctx.globalAlpha = 0.15 + 0.35 * depth;
+    function wall(side) {
       ctx.beginPath();
-      ctx.moveTo(cx - half - 30 * depth, y);
-      ctx.lineTo(cx - half, y);
-      ctx.moveTo(cx + half, y);
-      ctx.lineTo(cx + half + 30 * depth, y);
+      if (side < 0) {
+        ctx.moveTo(0, m.farY - 30);
+        ctx.lineTo(cx - m.farHalf, m.farY);
+        ctx.lineTo(cx - m.nearHalf, m.nearY);
+        ctx.lineTo(0, h);
+      } else {
+        ctx.moveTo(w, m.farY - 30);
+        ctx.lineTo(cx + m.farHalf, m.farY);
+        ctx.lineTo(cx + m.nearHalf, m.nearY);
+        ctx.lineTo(w, h);
+      }
+      ctx.closePath();
+      var lg = ctx.createLinearGradient(side < 0 ? 0 : w, 0, cx, 0);
+      lg.addColorStop(0, 'rgba(18,10,48,0.95)');
+      lg.addColorStop(1, 'rgba(40,20,80,0.2)');
+      ctx.fillStyle = lg;
+      ctx.fill();
+    }
+    wall(-1);
+    wall(1);
+
+    var scroll = (state.distance * 0.35) % 1;
+    for (var i = 0; i < 10; i++) {
+      var t = (i / 10 + scroll) % 1;
+      var depth = Math.pow(t, 1.05);
+      var y = m.farY + (m.nearY - m.farY) * depth;
+      var half = m.farHalf + (m.nearHalf - m.farHalf) * depth;
+      var rib = 10 + 46 * depth;
+      ctx.globalAlpha = 0.15 + 0.55 * depth;
+      ctx.strokeStyle = i % 2 === 0 ? 'rgba(34,211,238,0.85)' : 'rgba(192,132,252,0.8)';
+      ctx.lineWidth = 1.5 + 3 * depth;
+      ctx.beginPath();
+      ctx.moveTo(cx - half - rib, y);
+      ctx.lineTo(cx - half - 2, y);
+      ctx.moveTo(cx + half + 2, y);
+      ctx.lineTo(cx + half + rib, y);
       ctx.stroke();
+      /* Window slits. */
+      ctx.fillStyle = 'rgba(253,224,71,0.55)';
+      ctx.fillRect(cx - half - rib * 0.65, y - 8 * depth, 4 * depth + 2, 5 * depth + 2);
+      ctx.fillRect(cx + half + rib * 0.35, y - 8 * depth, 4 * depth + 2, 5 * depth + 2);
     }
     ctx.globalAlpha = 1;
   };
 
   Renderer.prototype.drawRoad = function (state) {
     var ctx = this.ctx;
-    var w = this.w, h = this.h;
-    var nearY = h * 0.88;
-    var farY = h * 0.10;
-    var cx = w / 2;
-    var nearHalf = w * 0.44;
-    var farHalf = w * 0.08;
+    var m = this.metrics();
+    var cx = this.w / 2;
+    var nearY = m.nearY;
+    var farY = m.farY;
+    var nearHalf = m.nearHalf;
+    var farHalf = m.farHalf;
 
-    // road fill
     ctx.beginPath();
     ctx.moveTo(cx - farHalf, farY);
     ctx.lineTo(cx + farHalf, farY);
@@ -229,25 +259,23 @@
     ctx.lineTo(cx - nearHalf, nearY);
     ctx.closePath();
     var rg = ctx.createLinearGradient(0, farY, 0, nearY);
-    rg.addColorStop(0, '#1a1448');
-    rg.addColorStop(0.5, '#2a1f6a');
-    rg.addColorStop(1, '#3d2a8a');
+    rg.addColorStop(0, '#1a1038');
+    rg.addColorStop(0.45, '#241450');
+    rg.addColorStop(1, '#12081c');
     ctx.fillStyle = rg;
     ctx.fill();
 
-    // perspective tile strips
-    var scroll = (state.distance * 0.55) % 1;
-    for (var i = 0; i < 18; i++) {
-      var t0 = (i + scroll) / 18;
-      var t1 = (i + 0.5 + scroll) / 18;
+    /* Asphalt bands. */
+    var scroll = (state.distance * 0.012) % 1;
+    for (var i = 0; i < 14; i++) {
+      var t0 = Math.pow((i + scroll) / 14, 1.15);
+      var t1 = Math.pow((i + 0.42 + scroll) / 14, 1.15);
       if (t0 > 1) continue;
-      var d0 = Math.pow(Math.min(1, t0), 0.78);
-      var d1 = Math.pow(Math.min(1, t1), 0.78);
-      var y0 = farY + (nearY - farY) * d0;
-      var y1 = farY + (nearY - farY) * d1;
-      var h0 = farHalf + (nearHalf - farHalf) * d0;
-      var h1 = farHalf + (nearHalf - farHalf) * d1;
-      ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.12)';
+      var y0 = farY + (nearY - farY) * Math.min(1, t0);
+      var y1 = farY + (nearY - farY) * Math.min(1, t1);
+      var h0 = farHalf + (nearHalf - farHalf) * Math.min(1, t0);
+      var h1 = farHalf + (nearHalf - farHalf) * Math.min(1, t1);
+      ctx.fillStyle = (i % 2 === 0) ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.18)';
       ctx.beginPath();
       ctx.moveTo(cx - h0, y0);
       ctx.lineTo(cx + h0, y0);
@@ -257,11 +285,48 @@
       ctx.fill();
     }
 
-    // edge neon
-    ctx.strokeStyle = 'rgba(0,229,255,0.7)';
-    ctx.lineWidth = 3.5;
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 12;
+    /* Forward chevrons — the ad-runner speed cue. */
+    var chev = (state.distance * 0.01) % 1;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    for (var c = 0; c < 7; c++) {
+      var ct = Math.pow((c + chev) / 7, 1.25);
+      if (ct > 1) continue;
+      var cy = farY + (nearY - farY) * ct;
+      var ch = farHalf + (nearHalf - farHalf) * ct;
+      var spread = ch * 0.62;
+      var thick = 2 + 9 * ct;
+      var base = cy + 10 + 36 * ct;
+      ctx.strokeStyle = 'rgba(103,232,249,' + (0.12 + 0.72 * ct) + ')';
+      ctx.lineWidth = thick;
+      ctx.beginPath();
+      ctx.moveTo(cx - spread, base);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + spread, base);
+      ctx.stroke();
+    }
+
+    /* Lane dividers. */
+    var lanes = state.lanes || 3;
+    var dashScroll = (state.distance * 0.55) % 40;
+    for (var L = 1; L < lanes; L++) {
+      var lt = L / lanes;
+      ctx.strokeStyle = 'rgba(216,180,254,0.55)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([16, 18]);
+      ctx.lineDashOffset = -dashScroll;
+      ctx.beginPath();
+      ctx.moveTo(cx - farHalf + farHalf * 2 * lt, farY);
+      ctx.lineTo(cx - nearHalf + nearHalf * 2 * lt, nearY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    /* Neon curbs. */
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#22d3ee';
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 14;
     ctx.beginPath();
     ctx.moveTo(cx - farHalf, farY);
     ctx.lineTo(cx - nearHalf, nearY);
@@ -269,128 +334,121 @@
     ctx.lineTo(cx + nearHalf, nearY);
     ctx.stroke();
     ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
 
-    // lane dividers
-    var lanes = state.lanes || 3;
-    var dashScroll = (state.distance * 0.5) % 50;
-    for (var L = 1; L < lanes; L++) {
-      var lt = L / lanes;
-      ctx.strokeStyle = 'rgba(180,120,255,0.5)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([18, 16]);
-      ctx.lineDashOffset = -dashScroll;
-      ctx.beginPath();
-      var fx = cx - farHalf + (farHalf * 2) * lt;
-      var nx = cx - nearHalf + (nearHalf * 2) * lt;
-      ctx.moveTo(fx, farY);
-      ctx.lineTo(nx, nearY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // horizon glow + fog
-    var fog = ctx.createRadialGradient(cx, farY, 4, cx, farY, farHalf * 3);
-    fog.addColorStop(0, 'rgba(160,80,255,0.45)');
-    fog.addColorStop(0.4, 'rgba(80,40,200,0.2)');
-    fog.addColorStop(1, 'rgba(0,0,0,0)');
+    /* Horizon fog so distant gates melt in. */
+    var fog = ctx.createLinearGradient(0, farY - 8, 0, farY + (nearY - farY) * 0.28);
+    fog.addColorStop(0, 'rgba(48,24,90,0.55)');
+    fog.addColorStop(1, 'rgba(48,24,90,0)');
     ctx.fillStyle = fog;
-    ctx.fillRect(cx - farHalf * 3, farY - 40, farHalf * 6, 80);
-
-    // distance fog overlay near horizon
-    var fogY = ctx.createLinearGradient(0, farY - 10, 0, farY + (nearY - farY) * 0.35);
-    fogY.addColorStop(0, 'rgba(12,10,40,0.55)');
-    fogY.addColorStop(1, 'rgba(12,10,40,0)');
-    ctx.fillStyle = fogY;
     ctx.beginPath();
-    ctx.moveTo(cx - farHalf * 1.5, farY - 10);
-    ctx.lineTo(cx + farHalf * 1.5, farY - 10);
-    ctx.lineTo(cx + nearHalf * 0.7, farY + (nearY - farY) * 0.35);
-    ctx.lineTo(cx - nearHalf * 0.7, farY + (nearY - farY) * 0.35);
+    ctx.moveTo(cx - farHalf * 2.2, farY - 8);
+    ctx.lineTo(cx + farHalf * 2.2, farY - 8);
+    ctx.lineTo(cx + nearHalf * 0.55, farY + (nearY - farY) * 0.28);
+    ctx.lineTo(cx - nearHalf * 0.55, farY + (nearY - farY) * 0.28);
     ctx.closePath();
     ctx.fill();
   };
 
   Renderer.prototype.drawGate = function (state, e) {
     var rel = e.z - state.distance;
-    if (rel < -20 || rel > 740) return;
+    /* Drop gates once they reach the runner so they don't ghost over the crowd. */
+    if (rel < 26 || rel > 700) return;
     var p = this.project(rel, e.lane, state.lanes);
     var ctx = this.ctx;
-    var bw = 72 * p.scale;
-    var bh = 96 * p.scale;
-    var depth3d = 14 * p.scale;
+    var sc = p.scale;
+    var bw = Math.min(p.laneW * 0.92, 150 * sc);
+    var bh = bw * 1.28;
+    var depth3d = Math.max(4, bw * 0.12);
     var color = GATE_COLORS[e.type] || '#fff';
+    var fade = rel < 52 ? Math.max(0, (rel - 26) / 26) : 1;
+    if (fade < 0.05) return;
 
     ctx.save();
+    ctx.globalAlpha = fade;
     ctx.translate(p.x, p.y);
 
-    // ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(0, 6 * p.scale, bw * 0.55, 8 * p.scale, 0, 0, Math.PI * 2);
+    ctx.ellipse(depth3d * 0.4, 8 * sc, bw * 0.46, Math.max(3, 9 * sc), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3D thickness (right + top edges)
-    ctx.fillStyle = shade(color, -0.45);
+    /* Extruded side + top. */
+    ctx.fillStyle = shade(color, -0.5);
     ctx.beginPath();
     ctx.moveTo(bw / 2, -bh);
-    ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.4);
-    ctx.lineTo(bw / 2 + depth3d, depth3d * 0.3);
+    ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.45);
+    ctx.lineTo(bw / 2 + depth3d, depth3d * 0.2);
     ctx.lineTo(bw / 2, 0);
     ctx.closePath();
     ctx.fill();
-
-    ctx.fillStyle = shade(color, -0.25);
+    ctx.fillStyle = shade(color, -0.15);
     ctx.beginPath();
     ctx.moveTo(-bw / 2, -bh);
-    ctx.lineTo(-bw / 2 + depth3d * 0.3, -bh - depth3d * 0.5);
-    ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.4);
+    ctx.lineTo(-bw / 2 + depth3d * 0.25, -bh - depth3d * 0.55);
+    ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.45);
     ctx.lineTo(bw / 2, -bh);
     ctx.closePath();
     ctx.fill();
 
-    // glow
     ctx.shadowColor = color;
-    ctx.shadowBlur = 22 * p.scale;
-
-    // front face gradient
-    var grd = ctx.createLinearGradient(-bw / 2, -bh, bw / 2, 0);
-    grd.addColorStop(0, shade(color, 0.25));
-    grd.addColorStop(0.45, color);
-    grd.addColorStop(1, shade(color, -0.35));
-    ctx.fillStyle = grd;
-    roundRect(ctx, -bw / 2, -bh, bw, bh, 10 * p.scale);
+    ctx.shadowBlur = 18 * Math.min(1.4, sc + 0.3);
+    var face = ctx.createLinearGradient(-bw / 2, -bh, bw / 2, 0);
+    face.addColorStop(0, shade(color, 0.28));
+    face.addColorStop(0.5, color);
+    face.addColorStop(1, shade(color, -0.38));
+    ctx.fillStyle = face;
+    roundRect(ctx, -bw / 2, -bh, bw, bh, Math.max(4, 12 * sc));
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // bright border
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = Math.max(1.5, 2.5 * p.scale);
-    roundRect(ctx, -bw / 2, -bh, bw, bh, 10 * p.scale);
+    var inset = Math.max(3, bw * 0.09);
+    ctx.fillStyle = 'rgba(5,6,16,0.78)';
+    roundRect(ctx, -bw / 2 + inset, -bh + inset, bw - inset * 2, bh - inset * 2, Math.max(3, 8 * sc));
+    ctx.fill();
+
+    /* Energy column inside the portal. */
+    var beam = ctx.createLinearGradient(0, -bh, 0, 0);
+    beam.addColorStop(0, 'rgba(255,255,255,0)');
+    beam.addColorStop(0.45, hexAlpha(color, 0.45));
+    beam.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = beam;
+    ctx.fillRect(-bw * 0.08, -bh + inset, bw * 0.16, bh - inset * 2);
+
+    var scan = ((state.time * 0.85 + (e.id || 0) * 0.17) % 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    var scanY = -bh + inset + scan * (bh - inset * 2 - 4);
+    ctx.fillRect(-bw / 2 + inset, scanY, bw - inset * 2, Math.max(2, 3 * sc));
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = Math.max(1.5, 3 * sc);
+    roundRect(ctx, -bw / 2, -bh, bw, bh, Math.max(4, 12 * sc));
     ctx.stroke();
 
-    // inner dark panel
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    roundRect(ctx, -bw / 2 + 5 * p.scale, -bh + 5 * p.scale, bw - 10 * p.scale, bh - 10 * p.scale, 7 * p.scale);
-    ctx.fill();
-
-    // top highlight strip
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    roundRect(ctx, -bw / 2 + 6 * p.scale, -bh + 6 * p.scale, bw - 12 * p.scale, bh * 0.18, 4 * p.scale);
-    ctx.fill();
-
-    // huge label
-    var fontSize = Math.floor(Math.min(bw * 0.42, 36 * p.scale));
-    ctx.font = '900 ' + fontSize + 'px system-ui,Segoe UI,sans-serif';
+    var label = e.label || '';
+    var len = label.length;
+    var fs = bh * (len <= 2 ? 0.46 : len <= 3 ? 0.36 : len <= 5 ? 0.24 : 0.17);
+    fs = Math.max(11, Math.min(fs, bw * 0.62));
+    ctx.font = '900 ' + Math.floor(fs) + 'px system-ui,Segoe UI,sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineWidth = Math.max(3, 5 * p.scale);
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.strokeText(e.label, 0, -bh / 2 + 2 * p.scale);
-    ctx.fillStyle = '#fff';
+    ctx.lineWidth = Math.max(3, fs * 0.14);
+    ctx.strokeStyle = 'rgba(0,0,0,0.72)';
+    ctx.strokeText(label, depth3d * 0.15, -bh * 0.48);
+    ctx.fillStyle = '#ffffff';
     ctx.shadowColor = color;
-    ctx.shadowBlur = 10 * p.scale;
-    ctx.fillText(e.label, 0, -bh / 2 + 2 * p.scale);
+    ctx.shadowBlur = 12 * sc;
+    ctx.fillText(label, depth3d * 0.15, -bh * 0.48);
     ctx.shadowBlur = 0;
+
+    /* Floor glint. */
+    ctx.globalAlpha = fade * 0.28;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(0, 4 * sc, bw * 0.28, Math.max(2, 5 * sc), 0, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   };
@@ -398,291 +456,342 @@
   Renderer.prototype.drawEnemy = function (state, e) {
     if (e.dead) return;
     var rel = e.z - state.distance;
-    if (rel < -20 || rel > 740) return;
+    if (rel < 26 || rel > 700) return;
+    var fade = rel < 52 ? Math.max(0, (rel - 26) / 26) : 1;
+    if (fade < 0.05) return;
     var p = this.project(rel, e.lane, state.lanes);
     var ctx = this.ctx;
     var color = ENEMY_COLORS[e.enemyKind] || '#ff6b6b';
-    var r = (e.enemyKind === 'boss' ? 40 : e.enemyKind === 'elite' ? 28 : 22) * p.scale;
-    var bob = Math.sin(state.time * 6 + e.id) * 3 * p.scale;
+    var near = rel < 140 ? 1 + (140 - rel) / 140 * 0.12 : 1;
+    var r = (e.enemyKind === 'boss' ? 46 : e.enemyKind === 'elite' ? 32 : 24) * p.scale * near;
+    var bob = Math.sin(state.time * 6 + (e.id || 0)) * 3 * p.scale;
+    var canKill = state.power >= e.hp;
 
     ctx.save();
-    ctx.translate(p.x, p.y - r + bob);
+    ctx.globalAlpha = fade;
+    ctx.translate(p.x, p.y - r * 0.15 + bob);
 
-    // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillStyle = 'rgba(0,0,0,0.42)';
     ctx.beginPath();
-    ctx.ellipse(0, r + 4 * p.scale, r * 0.7, r * 0.22, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, r * 0.95, r * 0.85, r * 0.24, 0, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.shadowColor = color;
-    ctx.shadowBlur = 18 * p.scale;
+    ctx.shadowBlur = 16 * p.scale;
 
     if (e.enemyKind === 'boss') {
-      // spiked triangle boss
-      ctx.fillStyle = shade(color, -0.2);
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 1.15);
-      ctx.lineTo(r * 1.1, r * 0.75);
-      ctx.lineTo(-r * 1.1, r * 0.75);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 0.85);
-      ctx.lineTo(r * 0.85, r * 0.55);
-      ctx.lineTo(-r * 0.85, r * 0.55);
-      ctx.closePath();
-      ctx.fill();
-      // horns
-      ctx.fillStyle = shade(color, 0.2);
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.5, -r * 0.4);
-      ctx.lineTo(-r * 0.85, -r * 1.1);
-      ctx.lineTo(-r * 0.15, -r * 0.55);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(r * 0.5, -r * 0.4);
-      ctx.lineTo(r * 0.85, -r * 1.1);
-      ctx.lineTo(r * 0.15, -r * 0.55);
-      ctx.fill();
-    } else if (e.enemyKind === 'elite') {
-      // diamond armor
       ctx.fillStyle = shade(color, -0.25);
       ctx.beginPath();
-      ctx.moveTo(0, -r);
-      ctx.lineTo(r, 0);
-      ctx.lineTo(0, r);
-      ctx.lineTo(-r, 0);
+      ctx.moveTo(0, -r * 1.25);
+      ctx.lineTo(r * 1.15, r * 0.85);
+      ctx.lineTo(-r * 1.15, r * 0.85);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.moveTo(0, -r * 0.7);
-      ctx.lineTo(r * 0.7, 0);
-      ctx.lineTo(0, r * 0.7);
-      ctx.lineTo(-r * 0.7, 0);
+      ctx.moveTo(0, -r);
+      ctx.lineTo(r * 0.82, r * 0.62);
+      ctx.lineTo(-r * 0.82, r * 0.62);
       ctx.closePath();
       ctx.fill();
+      ctx.fillStyle = '#fff';
+      horn(ctx, -1, r);
+      horn(ctx, 1, r);
+    } else if (e.enemyKind === 'elite') {
+      ctx.fillStyle = shade(color, -0.3);
+      diamond(ctx, r * 1.05);
+      ctx.fill();
+      ctx.fillStyle = color;
+      diamond(ctx, r * 0.72);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = Math.max(1, 2 * p.scale);
+      diamond(ctx, r * 0.72);
+      ctx.stroke();
     } else {
-      // grunt blob with horns
-      ctx.fillStyle = shade(color, -0.15);
+      ctx.fillStyle = shade(color, -0.2);
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(0, -r * 0.08, r * 0.85, 0, Math.PI * 2);
+      ctx.arc(-r * 0.1, -r * 0.12, r * 0.82, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = shade(color, 0.15);
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.45, -r * 0.55);
-      ctx.lineTo(-r * 0.55, -r * 1.05);
-      ctx.lineTo(-r * 0.1, -r * 0.65);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(r * 0.45, -r * 0.55);
-      ctx.lineTo(r * 0.55, -r * 1.05);
-      ctx.lineTo(r * 0.1, -r * 0.65);
-      ctx.fill();
+      ctx.fillStyle = shade(color, 0.2);
+      spike(ctx, -0.55, r);
+      spike(ctx, 0.55, r);
     }
     ctx.shadowBlur = 0;
 
-    // angry eyes
-    ctx.fillStyle = '#111';
+    /* Eyes. */
+    ctx.fillStyle = '#14080f';
     ctx.beginPath();
-    ctx.ellipse(-r * 0.32, -r * 0.12, r * 0.18, r * 0.14, -0.2, 0, Math.PI * 2);
-    ctx.ellipse(r * 0.32, -r * 0.12, r * 0.18, r * 0.14, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(-r * 0.28, -r * 0.05, r * 0.16, r * 0.18, 0, 0, Math.PI * 2);
+    ctx.ellipse(r * 0.28, -r * 0.05, r * 0.16, r * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(-r * 0.28, -r * 0.1, r * 0.07, 0, Math.PI * 2);
-    ctx.arc(r * 0.36, -r * 0.1, r * 0.07, 0, Math.PI * 2);
+    ctx.arc(-r * 0.24, -r * 0.1, r * 0.06, 0, Math.PI * 2);
+    ctx.arc(r * 0.32, -r * 0.1, r * 0.06, 0, Math.PI * 2);
     ctx.fill();
 
-    // HP badge
-    var bw = Math.max(36, String(e.hp).length * 12) * p.scale;
-    var bh = 20 * p.scale;
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    roundRect(ctx, -bw / 2, r * 0.65, bw, bh, 6 * p.scale);
-    ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5 * p.scale;
-    roundRect(ctx, -bw / 2, r * 0.65, bw, bh, 6 * p.scale);
+    /* Mouth on grunts. */
+    if (e.enemyKind === 'grunt') {
+      ctx.strokeStyle = 'rgba(40,0,10,0.8)';
+      ctx.lineWidth = Math.max(1.4, r * 0.09);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, r * 0.48, r * 0.22, 1.2 * Math.PI, 1.8 * Math.PI);
+      ctx.stroke();
+    }
+
+    /* Killable ring: green means the crowd wins, red means dodge. */
+    ctx.strokeStyle = canKill ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)';
+    ctx.lineWidth = Math.max(2, 3.5 * p.scale);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.18, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.font = '900 ' + Math.floor(14 * p.scale) + 'px system-ui,sans-serif';
+
+    var label = String(e.hp);
+    var bw = Math.max(r * 1.3, label.length * r * 0.55);
+    var bh = Math.max(14, r * 0.62);
+    var by = r * 0.95;
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    roundRect(ctx, -bw / 2, by, bw, bh, 6 * p.scale);
+    ctx.fill();
+    ctx.fillStyle = canKill ? '#bbf7d0' : '#fecaca';
+    ctx.font = '900 ' + Math.floor(Math.max(12, r * 0.55)) + 'px system-ui,sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(e.hp), 0, r * 0.65 + bh / 2);
+    ctx.fillText(label, 0, by + bh / 2);
 
     if (e.label && e.enemyKind === 'boss') {
-      ctx.fillStyle = '#ffeaa7';
-      ctx.font = 'bold ' + Math.floor(12 * p.scale) + 'px system-ui,sans-serif';
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.font = '900 ' + Math.floor(Math.max(11, 13 * p.scale)) + 'px system-ui,sans-serif';
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 3;
-      ctx.strokeText(e.label, 0, -r - 14 * p.scale);
-      ctx.fillText(e.label, 0, -r - 14 * p.scale);
+      ctx.strokeText(e.label, 0, -r * 1.45);
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText(e.label, 0, -r * 1.45);
     }
     ctx.restore();
   };
 
+  Renderer.prototype._slots = function (n) {
+    if (this._crowdN === n) return this._crowd;
+    var slots = [];
+    var remain = n;
+    var row = 0;
+    var pattern = [1, 2, 3, 4, 4, 5, 5];
+    while (remain > 0 && row < 7) {
+      var cols = Math.min(remain, pattern[Math.min(row, pattern.length - 1)]);
+      for (var c = 0; c < cols; c++) {
+        slots.push({
+          x: (c - (cols - 1) / 2) * (16 - row * 0.35),
+          y: -row * 13,
+          s: 1 - row * 0.055,
+          i: slots.length
+        });
+      }
+      remain -= cols;
+      row++;
+    }
+    this._crowdN = n;
+    this._crowd = slots;
+    return slots;
+  };
+
   Renderer.prototype.drawPlayer = function (state) {
     var ctx = this.ctx;
-    var depth = 0.92;
+    var depth = 0.97;
     var lanePos = NGCore.lerp(state.lane, state.targetLane, easeOut(state.laneT));
     var x = this.laneXAt(lanePos, state.lanes, depth);
-    var y = this.h * 0.78;
-    var bob = Math.sin(state.time * 14) * 4;
-    var stacks = Math.min(10, 1 + Math.floor(Math.log2(Math.max(1, state.power))));
-    var bodyScale = 0.85 + Math.min(0.45, Math.log10(Math.max(1, state.power)) * 0.25);
+    var y = this.h * 0.8;
+    var bob = Math.sin(state.time * 14) * 3;
 
-    // power pulse spring
-    this.powerPulseVel += (1 - this.powerPulse) * 18 * 0.016;
-    this.powerPulseVel *= 0.82;
+    this.powerPulseVel += (1 - this.powerPulse) * 22 * 0.016;
+    this.powerPulseVel *= 0.8;
     this.powerPulse += this.powerPulseVel;
     var pulse = this.powerPulse;
 
+    var count = visualCount(state.power);
+    var slots = this._slots(count);
+    var body = (1.2 + Math.min(0.7, Math.log10(Math.max(1, state.power)) * 0.28)) * pulse;
+    var lean = 0;
+    if (state.laneT < 1) lean = (state.targetLane - state.lane) * (1 - state.laneT);
+
+    /* Dust at the feet. */
+    if (this.dust.length < 22 && Math.random() < 0.55) {
+      this.dust.push({
+        x: x + (Math.random() - 0.5) * 28 * body,
+        y: y + 6,
+        vx: (Math.random() - 0.5) * 30,
+        vy: -20 - Math.random() * 30,
+        life: 0.28 + Math.random() * 0.15,
+        max: 0.4,
+        r: 2 + Math.random() * 2.5
+      });
+    }
+
     ctx.save();
-    ctx.translate(x, y + bob);
+    ctx.translate(x + lean * 10, y + bob);
+    ctx.rotate(lean * -0.08);
 
-    // ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath();
-    ctx.ellipse(0, 18, 28 * bodyScale * pulse, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // shield aura
     if (state.shield) {
-      ctx.strokeStyle = 'rgba(20,184,166,0.9)';
+      var auraR = 34 * body + slots.length * 3 + Math.sin(state.time * 8) * 3;
+      ctx.strokeStyle = 'rgba(45,212,191,0.95)';
       ctx.lineWidth = 3.5;
-      ctx.shadowColor = '#14b8a6';
+      ctx.shadowColor = '#2dd4bf';
       ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.arc(0, -18, 40 * bodyScale + Math.sin(state.time * 8) * 4, 0, Math.PI * 2);
+      ctx.ellipse(0, -18 * body, auraR, auraR * 0.72, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(20,184,166,0.1)';
+      ctx.fillStyle = 'rgba(45,212,191,0.08)';
       ctx.beginPath();
-      ctx.arc(0, -18, 40 * bodyScale, 0, Math.PI * 2);
+      ctx.ellipse(0, -18 * body, auraR, auraR * 0.72, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
     if (state.combo >= 3) {
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 28;
+      ctx.shadowBlur = 22;
     }
 
-    // stacked crowd
-    for (var i = stacks - 1; i >= 0; i--) {
-      var ox = (i % 3 - 1) * 10 * bodyScale * (i > 0 ? 1 : 0);
-      var oy = -i * 9 * bodyScale;
-      var rr = (15 - i * 0.5) * bodyScale * pulse;
-      var hue = i === 0 ? '#22d3ee' : 'rgba(34,211,238,' + (0.92 - i * 0.06) + ')';
-
-      // legs hint
-      if (i < 3) {
-        ctx.fillStyle = shade('#0e7490', -0.1);
-        ctx.fillRect(ox - 5 * bodyScale, oy + 6, 4 * bodyScale, 10 * bodyScale);
-        ctx.fillRect(ox + 2 * bodyScale, oy + 6, 4 * bodyScale, 10 * bodyScale);
-      }
-
-      // body
-      var bg = ctx.createRadialGradient(ox - rr * 0.3, oy - rr * 0.4 - 8, 1, ox, oy - 8, rr);
-      bg.addColorStop(0, '#a5f3fc');
-      bg.addColorStop(0.5, hue);
-      bg.addColorStop(1, '#0891b2');
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.arc(ox, oy - 8, rr, 0, Math.PI * 2);
-      ctx.fill();
-
-      // eyes on front units
-      if (i < 2) {
-        ctx.fillStyle = '#0a0e27';
-        ctx.beginPath();
-        ctx.arc(ox - 4 * bodyScale, oy - 10, 2.2 * bodyScale, 0, Math.PI * 2);
-        ctx.arc(ox + 4 * bodyScale, oy - 10, 2.2 * bodyScale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(ox - 3.5 * bodyScale, oy - 10.5, 0.8 * bodyScale, 0, Math.PI * 2);
-        ctx.arc(ox + 4.5 * bodyScale, oy - 10.5, 0.8 * bodyScale, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    /* Back rows first. */
+    for (var i = slots.length - 1; i >= 0; i--) {
+      var sl = slots[i];
+      drawRunner(
+        ctx,
+        sl.x * body,
+        sl.y * body,
+        body * sl.s * (i === 0 ? 1.12 : 1),
+        state.time * 16 + i,
+        i === 0 ? '#e0fbff' : CROWD_COLORS[i % CROWD_COLORS.length]
+      );
     }
     ctx.shadowBlur = 0;
 
-    // power badge under feet
-    var badgeW = 64 * pulse;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    roundRect(ctx, -badgeW / 2, 16, badgeW, 26, 10);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(34,211,238,0.7)';
-    ctx.lineWidth = 2;
-    roundRect(ctx, -badgeW / 2, 16, badgeW, 26, 10);
-    ctx.stroke();
-    ctx.fillStyle = '#67e8f9';
-    ctx.font = '900 16px system-ui,sans-serif';
+    /* Hero power number above the crowd. */
+    var top = 0;
+    for (var k = 0; k < slots.length; k++) top = Math.min(top, slots[k].y);
+    var numY = top * body - 36 * body;
+    var num = formatNum(state.power);
+    var nfs = Math.floor((34 + Math.min(18, String(Math.floor(state.power)).length)) * pulse);
+    ctx.font = '900 ' + nfs + 'px system-ui,Segoe UI,sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(formatNum(state.power), 0, 29);
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.strokeText(num, 0, numY);
+    ctx.fillStyle = '#67e8f9';
+    ctx.shadowColor = '#22d3ee';
+    ctx.shadowBlur = 16;
+    ctx.fillText(num, 0, numY);
+    ctx.shadowBlur = 0;
 
     ctx.restore();
-    return { x: x, y: y };
+    return { x: x, y: y + bob };
+  };
+
+  Renderer.prototype.drawDust = function (dt) {
+    var ctx = this.ctx;
+    for (var i = this.dust.length - 1; i >= 0; i--) {
+      var d = this.dust[i];
+      d.life -= dt;
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      if (d.life <= 0) {
+        this.dust.splice(i, 1);
+        continue;
+      }
+      ctx.globalAlpha = Math.max(0, d.life / d.max);
+      ctx.fillStyle = 'rgba(186,230,253,0.8)';
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   };
 
   Renderer.prototype.drawHUDOverlay = function (state) {
     var ctx = this.ctx;
     if (state.combo >= 2) {
-      var scale = 1 + Math.min(0.4, state.combo * 0.04);
-      if (this.comboFlash > 0) scale += this.comboFlash * 0.3;
+      var age = this.comboFlash > 0 ? this.comboFlash : 0;
+      var scale = 1 + Math.min(0.35, state.combo * 0.03) + age * 0.25;
       ctx.save();
-      ctx.translate(this.w / 2, 88);
+      ctx.translate(this.w / 2, this.h * 0.2);
       ctx.scale(scale, scale);
-      ctx.font = '900 28px system-ui,sans-serif';
+      ctx.font = '900 34px system-ui,Segoe UI,sans-serif';
       ctx.textAlign = 'center';
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.strokeText('COMBO ×' + state.combo, 0, 0);
-      var cg = ctx.createLinearGradient(-80, 0, 80, 0);
-      cg.addColorStop(0, '#fbbf24');
-      cg.addColorStop(0.5, '#f97316');
-      cg.addColorStop(1, '#ef4444');
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      var text = state.combo >= 6 ? 'RAMPAGE ×' + state.combo : 'COMBO ×' + state.combo;
+      ctx.strokeText(text, 0, 0);
+      var cg = ctx.createLinearGradient(-120, 0, 120, 0);
+      cg.addColorStop(0, '#fde68a');
+      cg.addColorStop(0.5, '#fb923c');
+      cg.addColorStop(1, '#f43f5e');
       ctx.fillStyle = cg;
-      ctx.fillText('COMBO ×' + state.combo, 0, 0);
+      ctx.fillText(text, 0, 0);
       ctx.restore();
     }
     if (state.scoreMult > 1) {
       ctx.save();
-      ctx.font = '900 18px system-ui,sans-serif';
+      ctx.font = '900 20px system-ui,sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#f472b6';
+      ctx.fillStyle = '#f9a8d4';
       ctx.shadowColor = '#ec4899';
-      ctx.shadowBlur = 12;
-      ctx.fillText('SCORE ×' + state.scoreMult.toFixed(1), this.w - 18, 78);
+      ctx.shadowBlur = 10;
+      ctx.fillText('SCORE ×' + state.scoreMult.toFixed(1), this.w - 22, this.h * 0.2);
       ctx.restore();
     }
-    if (this.comboFlash > 0) this.comboFlash -= 0.04;
+    if (this.comboFlash > 0) this.comboFlash = Math.max(0, this.comboFlash - 0.035);
+  };
+
+  Renderer.prototype.drawFlash = function () {
+    if (this.flashA > 0.015) {
+      var ctx = this.ctx;
+      ctx.save();
+      ctx.globalAlpha = this.flashA;
+      ctx.fillStyle = this.flashColor;
+      ctx.fillRect(-40, -40, this.w + 80, this.h + 80);
+      ctx.restore();
+      this.flashA *= 0.84;
+    }
+    var ctx2 = this.ctx;
+    var vg = ctx2.createRadialGradient(this.w / 2, this.h * 0.55, this.w * 0.28, this.w / 2, this.h * 0.5, this.w * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.42)');
+    ctx2.fillStyle = vg;
+    ctx2.fillRect(0, 0, this.w, this.h);
   };
 
   Renderer.prototype.render = function (state, particles, dt) {
     var ctx = this.ctx;
+    this._spd = Math.min(1, ((state && state.speed) || 140) / 420);
+    this._m = null;
+
     var shakeAmt = state.shake || 0;
-    var shakeX = 0, shakeY = 0;
-    if (shakeAmt > 0) {
-      shakeX = (Math.random() - 0.5) * 28 * shakeAmt;
-      shakeY = (Math.random() - 0.5) * 28 * shakeAmt;
+    var shakeX = 0;
+    var shakeY = 0;
+    if (shakeAmt > 0.02) {
+      shakeX = (Math.random() - 0.5) * 22 * shakeAmt;
+      shakeY = (Math.random() - 0.5) * 16 * shakeAmt;
     }
+    var lean = 0;
+    if (state.laneT < 1) lean = (state.targetLane - state.lane) * (1 - state.laneT);
+
     ctx.save();
+    ctx.translate(this.w / 2, this.h * 0.62);
+    ctx.rotate(lean * 0.03 + shakeAmt * (Math.random() - 0.5) * 0.02);
+    ctx.translate(-this.w / 2, -this.h * 0.62);
     ctx.translate(shakeX, shakeY);
 
-    this.drawBackground(state, dt);
-    this.drawSideWalls(state);
+    this.drawBackground(state, dt || 0);
+    this.drawWalls(state);
     this.drawRoad(state);
 
-    var list = state.entities.slice().sort(function (a, b) {
-      return b.z - a.z;
-    });
+    var list = state.entities.slice().sort(function (a, b) { return b.z - a.z; });
     for (var i = 0; i < list.length; i++) {
       var e = list[i];
       if (e.consumed && e.kind === 'gate') continue;
@@ -690,14 +799,99 @@
       else if (e.kind === 'enemy') this.drawEnemy(state, e);
     }
 
+    this.drawDust(dt || 0);
     var playerPos = this.drawPlayer(state);
-    this.drawHUDOverlay(state);
-
     if (particles) particles.draw(ctx);
-
+    this.drawFlash();
+    this.drawHUDOverlay(state);
     ctx.restore();
     return playerPos;
   };
+
+  function visualCount(power) {
+    power = Math.max(1, power);
+    if (power < 3) return 1;
+    if (power < 8) return 3;
+    if (power < 16) return 6;
+    if (power < 32) return 10;
+    if (power < 64) return 14;
+    if (power < 120) return 18;
+    return Math.min(24, 18 + Math.floor(Math.log2(power / 40)));
+  }
+
+  function drawRunner(ctx, x, y, s, phase, color) {
+    var swing = Math.sin(phase) * 4.5 * s;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 2, 7 * s, 2.6 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = shade(color, -0.45);
+    ctx.lineWidth = Math.max(1.4, 2.3 * s);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 1.6 * s, y - 7 * s);
+    ctx.lineTo(x - 2.4 * s + swing, y + 1);
+    ctx.moveTo(x + 1.6 * s, y - 7 * s);
+    ctx.lineTo(x + 2.4 * s - swing, y + 1);
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    roundRect(ctx, x - 4.4 * s, y - 16.5 * s, 8.8 * s, 10.5 * s, 3 * s);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    roundRect(ctx, x - 3 * s, y - 15.5 * s, 3.2 * s, 3 * s, 1.5 * s);
+    ctx.fill();
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1.2, 1.8 * s);
+    ctx.beginPath();
+    ctx.moveTo(x - 4 * s, y - 13 * s);
+    ctx.lineTo(x - 7 * s, y - 8 * s - swing * 0.35);
+    ctx.moveTo(x + 4 * s, y - 13 * s);
+    ctx.lineTo(x + 7 * s, y - 9 * s + swing * 0.35);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffd7b5';
+    ctx.beginPath();
+    ctx.arc(x, y - 19.2 * s, 4.3 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = shade(color, -0.15);
+    ctx.beginPath();
+    ctx.arc(x, y - 20.6 * s, 4.3 * s, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#1a1020';
+    ctx.beginPath();
+    ctx.arc(x + 1.5 * s, y - 19 * s, 0.7 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function horn(ctx, dir, r) {
+    ctx.beginPath();
+    ctx.moveTo(dir * r * 0.35, -r * 0.55);
+    ctx.lineTo(dir * r * 0.95, -r * 1.25);
+    ctx.lineTo(dir * r * 0.05, -r * 0.35);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function spike(ctx, dir, r) {
+    ctx.beginPath();
+    ctx.moveTo(dir * r * 0.7, -r * 0.45);
+    ctx.lineTo(dir * r * 0.95, -r * 1.15);
+    ctx.lineTo(dir * r * 0.25, -r * 0.55);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function diamond(ctx, r) {
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r, 0);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r, 0);
+    ctx.closePath();
+  }
 
   function easeOut(t) {
     return 1 - (1 - t) * (1 - t);
@@ -706,7 +900,7 @@
   function roundRect(ctx, x, y, w, h, r) {
     if (w < 0) { x += w; w = -w; }
     if (h < 0) { y += h; h = -h; }
-    r = Math.min(r, w / 2, h / 2);
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -727,6 +921,15 @@
       rgb += s.length === 1 ? '0' + s : s;
     }
     return rgb;
+  }
+
+  function hexAlpha(hex, a) {
+    hex = String(hex).replace('#', '');
+    if (hex.length < 6) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    var r = parseInt(hex.substr(0, 2), 16);
+    var g = parseInt(hex.substr(2, 2), 16);
+    var b = parseInt(hex.substr(4, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
 
   function formatNum(n) {

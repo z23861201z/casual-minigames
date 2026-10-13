@@ -14,6 +14,8 @@
   var lastTs = 0;
   var raf = 0;
   var maxCombo = 0;
+  var seenLane = false;
+  var lastLane = 1;
 
   function consumeInput() {
     var i = { left: inputQueue.left, right: inputQueue.right };
@@ -42,6 +44,8 @@
     var defaults = levelsData.defaults;
     state = NGCore.createState(cfg, defaults, (Date.now() ^ (Math.random() * 1e9)) | 0);
     maxCombo = 0;
+    seenLane = false;
+    lastLane = 1;
     particles.clear();
     audio.ensure();
     screen = 'playing';
@@ -61,43 +65,54 @@
         var gateX = lx;
         var gateY = ly - 80;
         // denser burst
-        particles.emit(gateX, gateY, 28, col, { speed: 300, up: 140, size: 5 });
-        particles.emit(gateX, gateY, 12, '#ffffff', { speed: 160, up: 100, size: 3, life: 0.4 });
-        // number flies to player
-        particles.flyTo(gateX, gateY, lx, ly + 10, ev.result.text, col);
-        particles.floatText(gateX, gateY - 20, ev.result.text, col, { size: 32, life: 0.7 });
+        particles.emit(gateX, gateY, 26, col, { speed: 420, up: 120, size: 5, life: 0.55 });
+        particles.emit(gateX, gateY, 10, '#ffffff', { speed: 220, up: 80, size: 3, life: 0.35, streak: true });
+        if (particles.ring) particles.ring(gateX, gateY, col, ev.gate.type === 'mul' ? 180 : 120);
+        particles.flyTo(gateX, gateY, lx, ly - 30, ev.result.text, col);
+        particles.floatText(gateX, gateY - 28, ev.result.text, col, { size: 40, life: 0.75 });
         if (renderer.pulsePower) renderer.pulsePower(state.power);
-        // stronger shake on big ops
+        var flash = 0.16;
         if (ev.result.kind === 'mul' || ev.gate.type === 'mul') {
-          state.shake = Math.max(state.shake || 0, 0.85);
+          state.shake = Math.max(state.shake || 0, 1.05);
+          flash = 0.32;
         } else if (ev.result.kind === 'bomb' || ev.gate.type === 'bomb') {
-          state.shake = Math.max(state.shake || 0, 1.0);
+          state.shake = Math.max(state.shake || 0, 1.15);
+          flash = 0.4;
+        } else if (ev.result.kind === 'sub' || ev.result.kind === 'div' || ev.gate.type === 'sub' || ev.gate.type === 'div') {
+          state.shake = Math.max(state.shake || 0, 0.7);
+          flash = 0.22;
         } else {
-          state.shake = Math.max(state.shake || 0, 0.45);
+          state.shake = Math.max(state.shake || 0, 0.55);
         }
+        if (renderer.addFlash) renderer.addFlash(col, flash);
         audio.gate(ev.result.kind || ev.gate.type);
       } else if (ev.type === 'kill') {
         var ec = NGRender.ENEMY_COLORS[ev.enemy.enemyKind] || '#ff6b6b';
-        particles.burst(lx, ly - 20, ec);
-        particles.addCorpse(lx, ly - 20, ec, ev.enemy.hp, ev.enemy.enemyKind);
-        particles.floatText(lx, ly - 55, '+' + ev.result.scoreGain, '#fbbf24', { size: 30 });
+        particles.burst(lx, ly - 30, ec);
+        particles.addCorpse(lx, ly - 24, ec, ev.enemy.hp, ev.enemy.enemyKind);
+        particles.floatText(lx, ly - 70, '+' + ev.result.scoreGain, '#fde68a', { size: 36 });
         if (ev.result.combo >= 2) {
-          particles.floatText(lx, ly - 90, 'COMBO ×' + ev.result.combo, '#f97316', { size: 26, life: 0.9 });
+          particles.floatText(lx, ly - 108, 'COMBO ×' + ev.result.combo, '#fb923c', { size: 30, life: 0.95 });
           if (renderer.comboFlash != null) renderer.comboFlash = 1;
         }
-        state.shake = Math.max(state.shake || 0, 0.55 + Math.min(0.5, ev.result.combo * 0.08));
+        state.shake = Math.max(state.shake || 0, 0.7 + Math.min(0.55, ev.result.combo * 0.08));
+        if (renderer.addFlash) renderer.addFlash('#fff7ed', ev.enemy.enemyKind === 'boss' ? 0.4 : 0.2);
         audio.kill(ev.result.combo);
         if (ev.result.combo > maxCombo) maxCombo = ev.result.combo;
       } else if (ev.type === 'combat') {
         if (ev.result.outcome === 'blocked') {
-          particles.emit(lx, ly, 18, '#14b8a6', { speed: 220 });
-          particles.floatText(lx, ly - 30, 'BLOCK!', '#14b8a6', { size: 28 });
-          state.shake = Math.max(state.shake || 0, 0.4);
+          particles.emit(lx, ly, 20, '#2dd4bf', { speed: 260, streak: true });
+          if (particles.ring) particles.ring(lx, ly, '#2dd4bf', 110);
+          particles.floatText(lx, ly - 36, 'BLOCK', '#5eead4', { size: 32 });
+          state.shake = Math.max(state.shake || 0, 0.5);
+          if (renderer.addFlash) renderer.addFlash('#5eead4', 0.2);
           audio.gate('shield');
         } else {
-          particles.emit(lx, ly, 26, '#ef4444', { speed: 280, up: 60 });
-          particles.floatText(lx, ly - 30, '-' + ev.result.damage, '#ef4444', { size: 30 });
-          state.shake = Math.max(state.shake || 0, 0.9);
+          particles.emit(lx, ly, 30, '#ef4444', { speed: 340, up: 40, size: 5 });
+          if (particles.ring) particles.ring(lx, ly, '#ef4444', 150);
+          particles.floatText(lx, ly - 36, '-' + ev.result.damage, '#fecaca', { size: 36 });
+          state.shake = Math.max(state.shake || 0, 1.05);
+          if (renderer.addFlash) renderer.addFlash('#ef4444', 0.42);
           audio.hurt();
         }
       } else if (ev.type === 'win') {
@@ -107,8 +122,10 @@
         audio.lose();
         state.shake = Math.max(state.shake || 0, 1.1);
       } else if (ev.type === 'boss') {
-        particles.floatText(renderer.w / 2, renderer.h * 0.28, 'BOSS!', '#c084fc', { size: 42, life: 1.2 });
-        state.shake = Math.max(state.shake || 0, 0.7);
+        particles.floatText(renderer.w / 2, renderer.h * 0.34, 'BOSS', '#e9d5ff', { size: 54, life: 1.15 });
+        if (particles.ring) particles.ring(renderer.w / 2, renderer.h * 0.4, '#c084fc', 220);
+        state.shake = Math.max(state.shake || 0, 0.85);
+        if (renderer.addFlash) renderer.addFlash('#c084fc', 0.28);
       }
     }
   }
@@ -124,6 +141,9 @@
       NGCore.step(state, dt, input);
       if (state.combo > maxCombo) maxCombo = state.combo;
       state._maxCombo = maxCombo;
+      if (seenLane && state.targetLane !== lastLane && audio.swish) audio.swish();
+      seenLane = true;
+      lastLane = state.targetLane;
 
       var playerPos = renderer.render(state, particles, dt);
       particles.update(dt);

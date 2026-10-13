@@ -50,9 +50,14 @@ Pages 入口设为仓库根目录（`index.html`）。
 
 ```bash
 node games/number-gate/tests/core-test.js
+node games/samegame/tests/core-test.js
 ```
 
-详见 `games/number-gate/SELFTEST.md`。
+详见 `games/number-gate/SELFTEST.md` 与 `games/samegame/SELFTEST.md`。
+
+## 视觉
+
+数字门是宽舞台伪 3D：透视走廊、霓虹路沿、冲向镜头的箭头、立体大门和随力量变多的小人队伍。撞门数字飞向队伍，击杀有击飞和震屏。SameGame 用糖果高光方块、碎片粒子和连击大字。首页是商店式落地页。逻辑在 `core.js`，表现层在 `render.js` / `particles.js` / `ui.js`。零构建。
 
 ## 设计文档（仓库外副本）
 

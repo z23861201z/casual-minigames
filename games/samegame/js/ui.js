@@ -41,8 +41,9 @@
     r.innerHTML =
       '<div id="screen-menu" class="screen">' +
       '  <div class="panel hero">' +
+      '    <div class="kicker">糖果材质 · 连击爆炸</div>' +
       '    <h1>消灭同色方块</h1>' +
-      '    <p class="tagline">SameGame · 渐变方块 · 连击爆炸 · 广告级爽感</p>' +
+      '    <p class="tagline">点碎同色团。方块会发光、炸开、连击砸到屏幕上。</p>' +
       '    <button class="btn primary" data-act="play">▶ 开始游戏</button>' +
       '    <button class="btn" data-act="levels">选择关卡</button>' +
       '    <button class="btn ghost" data-act="help">玩法说明</button>' +
@@ -180,7 +181,16 @@
     document.getElementById('hud-target').textContent = String(state.target);
     document.getElementById('hud-moves').textContent =
       state.movesLeft == null ? '∞' : String(state.movesLeft);
-    document.getElementById('hud-combo').textContent = '×' + (state.combo || 1);
+    var comboEl = document.getElementById('hud-combo');
+    comboEl.textContent = '×' + (state.combo || 1);
+    comboEl.classList.toggle('hot', (state.combo || 1) >= 2);
+    var scoreEl = document.getElementById('hud-score');
+    if (this._lastScore != null && state.score !== this._lastScore) {
+      scoreEl.classList.remove('pop');
+      void scoreEl.offsetWidth;
+      scoreEl.classList.add('pop');
+    }
+    this._lastScore = state.score;
     var pct = Math.min(100, (state.score / Math.max(1, state.target)) * 100);
     document.getElementById('hud-bar').style.width = pct + '%';
     document.getElementById('hud-moves').classList.toggle('warn', state.movesLeft != null && state.movesLeft <= 5);
@@ -195,7 +205,9 @@
   };
 
   UI.prototype.showResult = function (result) {
-    document.getElementById('result-title').textContent = result.win ? '通关！' : '未达成';
+    var title = document.getElementById('result-title');
+    title.textContent = result.win ? '通关' : '再试一次';
+    title.className = result.win ? 'win' : 'lose';
     document.getElementById('result-detail').textContent =
       '得分 ' + result.score + ' / 目标 ' + result.target +
       (result.cleared ? ' · 全清奖励已计入' : '') +
