@@ -26,7 +26,7 @@
     this.tweens = [];
     this.hidden = {}; // key "r,c" during pop animation
     this.visualPos = {}; // key -> {x,y} override during fall/shift
-    this.bg = '#12141c';
+    this.bg = '#0b0e18';
   }
 
   BoardRenderer.prototype.setColors = function (arr) {
@@ -79,7 +79,7 @@
   };
 
   BoardRenderer.prototype.addShake = function (amount) {
-    this.shake = Math.min(14, Math.max(this.shake, amount));
+    this.shake = Math.min(22, Math.max(this.shake, amount));
   };
 
   BoardRenderer.prototype.addFloat = function (text, row, col, color) {
@@ -91,13 +91,14 @@
       life: 0.9,
       maxLife: 0.9,
       color: color || '#fff',
-      size: 18
+      size: 24,
+      pop: 1.5
     });
   };
 
   BoardRenderer.prototype.showCombo = function (n) {
     if (n < 2) return;
-    this.comboPop = { n: n, life: 0.55, maxLife: 0.55 };
+    this.comboPop = { n: n, life: 0.85, maxLife: 0.85 };
   };
 
   BoardRenderer.prototype.playRemoveAnim = function (change, cells, onDone) {
@@ -167,6 +168,7 @@
       var f = this.floats[i];
       f.y += f.vy * dt;
       f.life -= dt;
+      if (f.pop != null) f.pop += (1 - f.pop) * Math.min(1, dt * 14);
       if (f.life <= 0) this.floats.splice(i, 1);
     }
     if (this.comboPop) {
@@ -220,46 +222,87 @@
 
   BoardRenderer.prototype._drawCell = function (ctx, x, y, value, scale, highlight) {
     var s = this.cellSize;
-    var gap = Math.max(2, s * 0.08);
+    var gap = Math.max(2, s * 0.1);
     var sz = (s - gap) * (scale != null ? scale : 1);
     var ox = x + (s - sz) / 2;
     var oy = y + (s - sz) / 2;
-    var r = Math.max(4, sz * 0.18);
+    var r = Math.max(6, sz * 0.22);
     ctx.save();
-    if (value === SameGameCore.STONE) {
-      ctx.fillStyle = this.stoneColor;
-    } else {
-      ctx.fillStyle = this.colors[value] || '#888';
-    }
-    this._roundRect(ctx, ox, oy, sz, sz, r);
+    // drop shadow under tile
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    this._roundRect(ctx, ox + 1.5, oy + 2.5, sz, sz, r);
     ctx.fill();
-    // gloss
-    if (value !== SameGameCore.STONE) {
-      var g = ctx.createLinearGradient(ox, oy, ox, oy + sz);
-      g.addColorStop(0, 'rgba(255,255,255,0.35)');
-      g.addColorStop(0.45, 'rgba(255,255,255,0.05)');
-      g.addColorStop(1, 'rgba(0,0,0,0.15)');
-      ctx.fillStyle = g;
+
+    var base = value === SameGameCore.STONE ? this.stoneColor : (this.colors[value] || '#888');
+    if (value === SameGameCore.STONE) {
+      var sg = ctx.createLinearGradient(ox, oy, ox + sz, oy + sz);
+      sg.addColorStop(0, '#7a8494');
+      sg.addColorStop(0.5, this.stoneColor);
+      sg.addColorStop(1, '#3a4250');
+      ctx.fillStyle = sg;
       this._roundRect(ctx, ox, oy, sz, sz, r);
       ctx.fill();
-    } else {
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
       ctx.lineWidth = 2;
+      this._roundRect(ctx, ox, oy, sz, sz, r);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(ox + sz * 0.2, oy + sz * 0.25, sz * 0.6, sz * 0.12);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      this._roundRect(ctx, ox + sz * 0.15, oy + sz * 0.12, sz * 0.7, sz * 0.18, r * 0.4);
+      ctx.fill();
+    } else {
+      // body radial gradient
+      var rg = ctx.createRadialGradient(ox + sz * 0.3, oy + sz * 0.25, sz * 0.05, ox + sz * 0.5, oy + sz * 0.55, sz * 0.75);
+      rg.addColorStop(0, shadeHex(base, 0.35));
+      rg.addColorStop(0.55, base);
+      rg.addColorStop(1, shadeHex(base, -0.35));
+      ctx.fillStyle = rg;
+      this._roundRect(ctx, ox, oy, sz, sz, r);
+      ctx.fill();
+      // specular highlight bar
+      var hg = ctx.createLinearGradient(ox, oy, ox, oy + sz * 0.45);
+      hg.addColorStop(0, 'rgba(255,255,255,0.55)');
+      hg.addColorStop(0.4, 'rgba(255,255,255,0.12)');
+      hg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = hg;
+      this._roundRect(ctx, ox + 2, oy + 2, sz - 4, sz * 0.38, r * 0.6);
+      ctx.fill();
+      // rim light
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx.lineWidth = 1.5;
+      this._roundRect(ctx, ox + 1, oy + 1, sz - 2, sz - 2, r - 1);
+      ctx.stroke();
+      // bottom shade
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      this._roundRect(ctx, ox + 2, oy + sz * 0.62, sz - 4, sz * 0.32, r * 0.4);
+      ctx.fill();
     }
     if (highlight) {
+      ctx.shadowColor = base;
+      ctx.shadowBlur = 14;
       ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      ctx.lineWidth = Math.max(2, s * 0.06);
-      this._roundRect(ctx, ox - 1, oy - 1, sz + 2, sz + 2, r + 1);
+      ctx.lineWidth = Math.max(2.5, s * 0.07);
+      this._roundRect(ctx, ox - 2, oy - 2, sz + 4, sz + 4, r + 2);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
       this._roundRect(ctx, ox, oy, sz, sz, r);
       ctx.fill();
     }
     ctx.restore();
   };
+
+  function shadeHex(hex, lum) {
+    hex = String(hex).replace(/[^0-9a-f]/gi, '');
+    if (hex.length < 6) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    var out = '#';
+    for (var i = 0; i < 3; i++) {
+      var c = parseInt(hex.substr(i * 2, 2), 16);
+      c = Math.round(Math.min(255, Math.max(0, c + c * lum)));
+      var s = c.toString(16);
+      out += s.length === 1 ? '0' + s : s;
+    }
+    return out;
+  }
 
   BoardRenderer.prototype._roundRect = function (ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -292,9 +335,13 @@
     ctx.translate(sx, sy);
 
     // panel bg
-    ctx.fillStyle = '#1a1e2b';
-    this._roundRect(ctx, this.offsetX - 6, this.offsetY - 6, bw + 12, bh + 12, 12);
+    ctx.fillStyle = '#151a2a';
+    this._roundRect(ctx, this.offsetX - 8, this.offsetY - 8, bw + 16, bh + 16, 16);
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1.5;
+    this._roundRect(ctx, this.offsetX - 8, this.offsetY - 8, bw + 16, bh + 16, 16);
+    ctx.stroke();
 
     var hoverSet = {};
     if (this.hover) {
@@ -364,8 +411,12 @@
       var a = fl.life / fl.maxLife;
       ctx.globalAlpha = a;
       ctx.fillStyle = fl.color;
-      ctx.font = 'bold ' + (fl.size + (1 - a) * 6) + 'px system-ui,sans-serif';
+      var fsz = (fl.size + (1 - a) * 10) * (fl.pop || 1);
+      ctx.font = '900 ' + fsz + 'px system-ui,sans-serif';
       ctx.textAlign = 'center';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.strokeText(fl.text, fl.x, fl.y);
       ctx.fillText(fl.text, fl.x, fl.y);
       ctx.globalAlpha = 1;
     }
@@ -375,13 +426,19 @@
       var ca = Math.min(1, cp.life / 0.2) * Math.min(1, (cp.maxLife - cp.life) / 0.15 + 0.5);
       ctx.globalAlpha = Math.min(1, ca);
       ctx.fillStyle = cp.n >= 4 ? '#FF6B35' : '#FFD93D';
-      ctx.font = 'bold ' + (32 + Math.min(cp.n, 6) * 2) + 'px system-ui,sans-serif';
+      var csz = 40 + Math.min(cp.n, 8) * 4;
+      var popScale = 1 + (1 - cp.life / cp.maxLife) * 0.15;
+      ctx.font = '900 ' + csz + 'px system-ui,sans-serif';
       ctx.textAlign = 'center';
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 4;
-      var tx = w / 2, ty = h * 0.22;
-      ctx.strokeText('COMBO ×' + cp.n, tx, ty);
-      ctx.fillText('COMBO ×' + cp.n, tx, ty);
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 6;
+      var tx = w / 2, ty = h * 0.2;
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.scale(popScale, popScale);
+      ctx.strokeText('COMBO ×' + cp.n, 0, 0);
+      ctx.fillText('COMBO ×' + cp.n, 0, 0);
+      ctx.restore();
       ctx.globalAlpha = 1;
     }
   };

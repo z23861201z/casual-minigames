@@ -1,5 +1,5 @@
 /**
- * Number Gate Runner — main loop, input, state machine.
+ * Number Gate Runner — main loop, input, state machine + juice wiring.
  */
 (function () {
   'use strict';
@@ -7,7 +7,7 @@
   var levelsData = null;
   var ui, renderer, audio, particles;
   var state = null;
-  var screen = 'menu'; // menu | playing | paused | end
+  var screen = 'menu';
   var currentLevelId = 1;
   var mode = 'campaign';
   var inputQueue = { left: false, right: false };
@@ -54,37 +54,61 @@
   function handleEvents(evs, playerPos) {
     for (var i = 0; i < evs.length; i++) {
       var ev = evs[i];
-      var lx = playerPos ? playerPos.x : 195;
-      var ly = playerPos ? playerPos.y - 40 : 500;
+      var lx = playerPos ? playerPos.x : renderer.w / 2;
+      var ly = playerPos ? playerPos.y - 40 : renderer.h * 0.72;
       if (ev.type === 'gate') {
         var col = NGRender.GATE_COLORS[ev.result.kind] || NGRender.GATE_COLORS[ev.gate.type] || '#fff';
-        particles.emit(lx, ly, 18, col, { speed: 260, up: 120 });
-        particles.floatText(lx, ly - 30, ev.result.text, col);
+        var gateX = lx;
+        var gateY = ly - 80;
+        // denser burst
+        particles.emit(gateX, gateY, 28, col, { speed: 300, up: 140, size: 5 });
+        particles.emit(gateX, gateY, 12, '#ffffff', { speed: 160, up: 100, size: 3, life: 0.4 });
+        // number flies to player
+        particles.flyTo(gateX, gateY, lx, ly + 10, ev.result.text, col);
+        particles.floatText(gateX, gateY - 20, ev.result.text, col, { size: 32, life: 0.7 });
+        if (renderer.pulsePower) renderer.pulsePower(state.power);
+        // stronger shake on big ops
+        if (ev.result.kind === 'mul' || ev.gate.type === 'mul') {
+          state.shake = Math.max(state.shake || 0, 0.85);
+        } else if (ev.result.kind === 'bomb' || ev.gate.type === 'bomb') {
+          state.shake = Math.max(state.shake || 0, 1.0);
+        } else {
+          state.shake = Math.max(state.shake || 0, 0.45);
+        }
         audio.gate(ev.result.kind || ev.gate.type);
       } else if (ev.type === 'kill') {
         var ec = NGRender.ENEMY_COLORS[ev.enemy.enemyKind] || '#ff6b6b';
-        particles.emit(lx, ly - 20, 28, ec, { speed: 320, up: 160, life: 0.7 });
-        particles.emit(lx, ly - 20, 10, '#ffeaa7', { speed: 180, up: 200 });
-        particles.addCorpse(lx, ly - 20, ec, ev.enemy.hp);
-        particles.floatText(lx, ly - 50, '+' + ev.result.scoreGain, '#f1c40f');
+        particles.burst(lx, ly - 20, ec);
+        particles.addCorpse(lx, ly - 20, ec, ev.enemy.hp, ev.enemy.enemyKind);
+        particles.floatText(lx, ly - 55, '+' + ev.result.scoreGain, '#fbbf24', { size: 30 });
+        if (ev.result.combo >= 2) {
+          particles.floatText(lx, ly - 90, 'COMBO ×' + ev.result.combo, '#f97316', { size: 26, life: 0.9 });
+          if (renderer.comboFlash != null) renderer.comboFlash = 1;
+        }
+        state.shake = Math.max(state.shake || 0, 0.55 + Math.min(0.5, ev.result.combo * 0.08));
         audio.kill(ev.result.combo);
         if (ev.result.combo > maxCombo) maxCombo = ev.result.combo;
       } else if (ev.type === 'combat') {
         if (ev.result.outcome === 'blocked') {
-          particles.emit(lx, ly, 14, '#1abc9c', { speed: 200 });
-          particles.floatText(lx, ly - 30, 'BLOCK', '#1abc9c');
+          particles.emit(lx, ly, 18, '#14b8a6', { speed: 220 });
+          particles.floatText(lx, ly - 30, 'BLOCK!', '#14b8a6', { size: 28 });
+          state.shake = Math.max(state.shake || 0, 0.4);
           audio.gate('shield');
         } else {
-          particles.emit(lx, ly, 20, '#e74c3c', { speed: 240 });
-          particles.floatText(lx, ly - 30, '-' + ev.result.damage, '#e74c3c');
+          particles.emit(lx, ly, 26, '#ef4444', { speed: 280, up: 60 });
+          particles.floatText(lx, ly - 30, '-' + ev.result.damage, '#ef4444', { size: 30 });
+          state.shake = Math.max(state.shake || 0, 0.9);
           audio.hurt();
         }
       } else if (ev.type === 'win') {
         audio.win();
+        state.shake = Math.max(state.shake || 0, 0.6);
       } else if (ev.type === 'lose') {
         audio.lose();
+        state.shake = Math.max(state.shake || 0, 1.1);
       } else if (ev.type === 'boss') {
-        particles.floatText(195, 200, 'BOSS!', '#a55eea');
+        particles.floatText(renderer.w / 2, renderer.h * 0.28, 'BOSS!', '#c084fc', { size: 42, life: 1.2 });
+        state.shake = Math.max(state.shake || 0, 0.7);
       }
     }
   }
@@ -117,18 +141,15 @@
     } else if (screen === 'paused' && state) {
       renderer.render(state, particles, 0);
     } else if (screen === 'menu') {
-      // idle preview background
       if (!state) {
         var cfg = getLevelCfg(1);
         state = NGCore.createState(cfg, levelsData.defaults, 42);
         state.status = 'idle';
       }
-      // fake scroll for menu ambience
-      state.distance += 40 * dt;
-      state.speed = 120;
+      state.distance += 50 * dt;
+      state.speed = 140;
       state.time += dt;
-      // spawn visuals only
-      while (state.nextGateAt < state.distance + 600) {
+      while (state.nextGateAt < state.distance + 650) {
         var row = NGCore.spawnGateRow(state.levelCfg, state.nextGateAt, state.idGen, state.rnd);
         for (var g = 0; g < row.length; g++) state.entities.push(row[g]);
         state.nextGateAt += 180;
@@ -228,7 +249,6 @@
     ui.showMenu();
     raf = requestAnimationFrame(frame);
 
-    // unlock audio on first gesture
     window.addEventListener('pointerdown', function once() {
       audio.ensure();
       window.removeEventListener('pointerdown', once);

@@ -151,7 +151,7 @@
     var cent = SameGameCore.centroid(result.cells);
     renderer.addFloat('+' + result.scoreGain, cent.row, cent.col, levelsData.colors[result.cells[0].color]);
     renderer.showCombo(result.combo);
-    var shake = Math.min(14, 2 + Math.log2(Math.max(2, result.n)) * 2 + (result.combo - 1) * 0.8);
+    var shake = Math.min(20, 3.5 + Math.log2(Math.max(2, result.n)) * 2.8 + (result.combo - 1) * 1.2);
     renderer.addShake(shake);
     particles.burst(result.cells, renderer.cellSize, renderer.offsetX, renderer.offsetY, levelsData.colors);
     if (result.cleared) audio.playClear();

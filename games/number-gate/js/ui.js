@@ -1,5 +1,5 @@
 /**
- * DOM UI — menus, HUD, overlays for Number Gate Runner.
+ * DOM UI — modern card menus, HUD, overlays for Number Gate Runner.
  */
 (function (global) {
   'use strict';
@@ -8,6 +8,7 @@
     this.root = root;
     this.handlers = handlers || {};
     this.els = {};
+    this._powerPopTimer = null;
     this._build();
   }
 
@@ -26,9 +27,14 @@
             '</div>' +
             '<button type="button" class="ng-icon-btn" id="ng-mute" aria-label="静音">🔊</button>' +
           '</div>' +
-          '<div class="ng-power-wrap"><div class="ng-power-label">力量</div><div class="ng-power" id="hud-power">0</div>' +
-            '<div class="ng-badges"><span id="hud-shield" class="ng-badge" hidden>🛡</span>' +
-            '<span id="hud-mult" class="ng-badge ng-badge-mult" hidden>×</span></div></div>' +
+          '<div class="ng-power-wrap">' +
+            '<div class="ng-power-label">力量</div>' +
+            '<div class="ng-power" id="hud-power">0</div>' +
+            '<div class="ng-badges">' +
+              '<span id="hud-shield" class="ng-badge" hidden>🛡 护盾</span>' +
+              '<span id="hud-mult" class="ng-badge ng-badge-mult" hidden>×</span>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
         '<div class="ng-touch" id="ng-touch" hidden>' +
           '<button type="button" class="ng-lane-btn" id="btn-left" aria-label="向左">◀</button>' +
@@ -38,19 +44,20 @@
           '<div class="ng-card">' +
             '<a class="ng-back" href="../../index.html">← 合集首页</a>' +
             '<div class="ng-logo">NUMBER GATE</div>' +
-            '<p class="ng-tagline">左右选门 · 数值碾压 · 打怪狂奔</p>' +
+            '<p class="ng-tagline">左右选门 · 数值碾压 · 打怪狂奔<br/>广告级伪 3D 跑酷体验</p>' +
             '<div class="ng-menu-actions">' +
-              '<button type="button" class="ng-btn ng-btn-primary" id="btn-play">开始战役</button>' +
-              '<button type="button" class="ng-btn" id="btn-endless">无尽模式</button>' +
+              '<button type="button" class="ng-btn ng-btn-primary" id="btn-play">▶ 开始战役</button>' +
+              '<button type="button" class="ng-btn" id="btn-endless">∞ 无尽模式</button>' +
             '</div>' +
             '<div class="ng-level-picker" id="level-picker"></div>' +
-            '<p class="ng-help">键盘 ← → 换道 · 滑动或点按钮 · P 暂停</p>' +
+            '<p class="ng-help">键盘 ← → 换道 · 滑动或点按钮 · P / Esc 暂停</p>' +
           '</div>' +
         '</div>' +
         '<div class="ng-overlay" id="ng-pause-menu" hidden>' +
           '<div class="ng-card">' +
             '<div class="ng-logo sm">暂停</div>' +
-            '<button type="button" class="ng-btn ng-btn-primary" id="btn-resume">继续</button>' +
+            '<p class="ng-tagline">喘口气，继续冲刺</p>' +
+            '<button type="button" class="ng-btn ng-btn-primary" id="btn-resume">继续游戏</button>' +
             '<button type="button" class="ng-btn" id="btn-restart">重开本关</button>' +
             '<button type="button" class="ng-btn" id="btn-to-menu">回主菜单</button>' +
           '</div>' +
@@ -60,7 +67,7 @@
             '<div class="ng-logo sm" id="end-title">通关！</div>' +
             '<div class="ng-end-stats" id="end-stats"></div>' +
             '<button type="button" class="ng-btn ng-btn-primary" id="btn-again">再来一次</button>' +
-            '<button type="button" class="ng-btn" id="btn-next" hidden>下一关</button>' +
+            '<button type="button" class="ng-btn" id="btn-next" hidden>下一关 →</button>' +
             '<button type="button" class="ng-btn" id="btn-end-menu">回主菜单</button>' +
           '</div>' +
         '</div>' +
@@ -90,7 +97,6 @@
     this.els['btn-next'].onclick = function () { self.handlers.onNext && self.handlers.onNext(); };
     this.els['btn-end-menu'].onclick = function () { self.handlers.onMenu && self.handlers.onMenu(); };
 
-    // lane buttons — hold not needed; pulse on click
     function pulse(dir) {
       return function (ev) {
         ev.preventDefault();
@@ -101,6 +107,7 @@
     this.els['btn-right'].addEventListener('pointerdown', pulse(1));
 
     this.selectedLevel = 1;
+    this._lastPower = 0;
   };
 
   UI.prototype.fillLevels = function (levels) {
@@ -149,7 +156,7 @@
   UI.prototype.showEnd = function (won, state, hasNext) {
     this.els['ng-end'].hidden = false;
     this.els['ng-touch'].hidden = true;
-    this.els['end-title'].textContent = won ? '通关！' : '失败…';
+    this.els['end-title'].textContent = won ? '通关！' : '再试一次';
     this.els['end-title'].className = 'ng-logo sm' + (won ? ' win' : ' lose');
     this.els['end-stats'].innerHTML =
       '<div>分数 <b>' + Math.floor(state.score) + '</b></div>' +
@@ -163,7 +170,22 @@
     this.els['hud-score'].textContent = Math.floor(state.score);
     this.els['hud-dist'].textContent = Math.floor(state.distance) + 'm';
     this.els['hud-level'].textContent = state.isEndless ? '∞' : String(state.levelId);
-    this.els['hud-power'].textContent = NGRender.formatNum(state.power);
+    var powerEl = this.els['hud-power'];
+    var pStr = NGRender.formatNum(state.power);
+    if (state.power !== this._lastPower) {
+      powerEl.textContent = pStr;
+      powerEl.classList.remove('pop');
+      void powerEl.offsetWidth;
+      powerEl.classList.add('pop');
+      var self = this;
+      clearTimeout(this._powerPopTimer);
+      this._powerPopTimer = setTimeout(function () {
+        powerEl.classList.remove('pop');
+      }, 220);
+      this._lastPower = state.power;
+    } else {
+      powerEl.textContent = pStr;
+    }
     this.els['hud-shield'].hidden = !state.shield;
     if (state.scoreMult > 1) {
       this.els['hud-mult'].hidden = false;

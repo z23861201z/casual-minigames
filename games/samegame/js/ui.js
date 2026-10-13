@@ -42,8 +42,8 @@
       '<div id="screen-menu" class="screen">' +
       '  <div class="panel hero">' +
       '    <h1>消灭同色方块</h1>' +
-      '    <p class="tagline">SameGame · 连击爆炸 · 高爽消除</p>' +
-      '    <button class="btn primary" data-act="play">开始游戏</button>' +
+      '    <p class="tagline">SameGame · 渐变方块 · 连击爆炸 · 广告级爽感</p>' +
+      '    <button class="btn primary" data-act="play">▶ 开始游戏</button>' +
       '    <button class="btn" data-act="levels">选择关卡</button>' +
       '    <button class="btn ghost" data-act="help">玩法说明</button>' +
       '  </div>' +
