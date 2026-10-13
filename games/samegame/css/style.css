@@ -67,18 +67,15 @@ html, body {
 }
 
 .panel {
-  background: linear-gradient(165deg, rgba(40,48,72,0.95), rgba(22,27,44,0.98));
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 22px;
-  padding: 30px 24px;
-  width: min(440px, 100%);
-  box-shadow:
-    0 24px 60px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(255,255,255,0.08),
-    0 0 40px rgba(91,156,255,0.08);
+  background: none;
+  border: 28px solid transparent;
+  border-image: url("../../../assets/ui/hud-frame.png") 64 fill / 28px / 0 stretch;
+  border-radius: 0;
+  padding: 12px 16px 16px;
+  width: min(460px, 100%);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.45);
   text-align: center;
   animation: cardIn 0.32s cubic-bezier(0.22,1,0.36,1);
-  backdrop-filter: blur(16px);
 }
 .kicker {
   display: inline-block;
@@ -109,29 +106,38 @@ html, body {
 .btn {
   display: block; width: 100%;
   margin: 10px 0 0;
-  padding: 14px 16px;
-  border: none; border-radius: 14px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.1);
+  padding: 4px 12px;
+  border-radius: 0;
+  border: 16px solid transparent;
+  border-image: url("../../../assets/ui/btn-ghost.png") 64 fill / 16px / 0 stretch;
+  background: none;
   color: var(--text);
   font-size: 1rem; font-weight: 700;
   cursor: pointer;
-  transition: transform 0.12s, background 0.12s, box-shadow 0.12s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+  transition: transform 0.12s;
 }
-.btn:hover { background: rgba(255,255,255,0.12); transform: translateY(-1px); }
-.btn:active { transform: translateY(1px) scale(0.98); }
-.btn.primary {
-  background: linear-gradient(135deg, #5b9cff, #7c5cff);
-  border: none;
-  box-shadow: 0 10px 28px rgba(91,156,255,0.35);
+.btn:hover {
+  border-image-source: url("../../../assets/ui/btn-ghost-hover.png");
+  background: none;
+  transform: translateY(-1px);
 }
-.btn.primary:hover { filter: brightness(1.08); box-shadow: 0 14px 36px rgba(91,156,255,0.45); }
-.btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.18); }
+.btn:active {
+  border-image-source: url("../../../assets/ui/btn-ghost-pressed.png");
+  transform: translateY(1px) scale(0.98);
+}
+.btn.primary { border-image-source: url("../../../assets/ui/btn-primary.png"); color: #fff; }
+.btn.primary:hover { border-image-source: url("../../../assets/ui/btn-primary-hover.png"); }
+.btn.primary:active { border-image-source: url("../../../assets/ui/btn-primary-pressed.png"); }
+.btn.ghost { border-image-source: url("../../../assets/ui/btn-ghost.png"); }
 .btn.tiny {
   display: inline-block; width: auto; margin: 0;
-  padding: 7px 12px; font-size: 0.85rem;
-  border-radius: 10px;
+  padding: 2px 8px; font-size: 0.85rem;
+  border: 10px solid transparent;
+  border-image: url("../../../assets/ui/hud-chip.png") 40 fill / 10px / 0 stretch;
+  border-radius: 0;
 }
+.btn.tiny:hover { border-image-source: url("../../../assets/ui/badge-cyan.png"); }
 
 .help-list {
   text-align: left; color: var(--muted); line-height: 1.6;
@@ -149,22 +155,23 @@ html, body {
   padding: 2px;
 }
 .level-btn {
-  background: rgba(0,0,0,0.28);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px;
+  background: none;
+  border: 10px solid transparent;
+  border-image: url("../../../assets/ui/hud-chip.png") 40 fill / 10px / 0 stretch;
+  border-radius: 0;
   color: var(--text);
-  padding: 14px 8px;
+  padding: 8px 6px;
   cursor: pointer;
   display: flex; flex-direction: column; gap: 4px;
   align-items: center;
-  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+  transition: transform 0.12s, box-shadow 0.15s;
 }
 .level-btn .num { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
 .level-btn .name { font-size: 0.78rem; color: var(--muted); }
 .level-btn .starline { color: var(--warn); font-size: 0.85rem; letter-spacing: 1px; }
 .level-btn.locked { opacity: 0.38; cursor: not-allowed; }
 .level-btn:not(.locked):hover {
-  border-color: var(--accent);
+  border-image-source: url("../../../assets/ui/badge-cyan.png");
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(91,156,255,0.2);
 }
@@ -192,10 +199,11 @@ html, body {
   text-align: center;
 }
 .hud-stats > div {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
-  padding: 6px 4px;
+  background: none;
+  border: 8px solid transparent;
+  border-image: url("../../../assets/ui/hud-chip.png") 40 fill / 8px / 0 stretch;
+  border-radius: 0;
+  padding: 2px 2px 4px;
 }
 .hud-stats .k { display: block; font-size: 0.68rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
 .hud-stats span:not(.k) { font-size: 1.15rem; font-weight: 800; }
@@ -218,16 +226,22 @@ html, body {
   color: transparent;
 }
 .progress-wrap {
-  margin-top: 10px; height: 10px; border-radius: 99px;
-  background: rgba(255,255,255,0.08); overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.35);
+  margin-top: 10px;
+  box-sizing: content-box;
+  height: 8px;
+  border-radius: 0;
+  border: 6px solid transparent;
+  border-image: url("../../../assets/ui/progress-track.png") 28 fill / 6px / 0 stretch;
+  background: none;
+  overflow: hidden;
+  box-shadow: none;
 }
 .progress-bar {
   height: 100%; width: 0%;
-  background: linear-gradient(90deg, #6bcb77, #ffd93d, #ff4d6d);
+  background: url("../../../assets/ui/progress-fill.png") center / 100% 100% no-repeat;
   transition: width 0.25s ease-out;
-  border-radius: 99px;
-  box-shadow: 0 0 12px rgba(255,217,61,0.4);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 #game-canvas {
@@ -259,5 +273,5 @@ html, body {
 
 @media (max-width: 520px) {
   .hud-stats { grid-template-columns: repeat(4, 1fr); font-size: 0.9rem; }
-  .panel { padding: 24px 16px; }
+  .panel { padding: 8px 12px 12px; }
 }

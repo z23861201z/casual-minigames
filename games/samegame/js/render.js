@@ -1,6 +1,30 @@
 (function (global) {
   'use strict';
 
+  function drawNineSlice(ctx, img, x, y, w, h, s) {
+    if (!imageReady(img) || w < s * 2 || h < s * 2) return false;
+    var sw = img.width;
+    var sh = img.height;
+    var sx = [0, s, sw - s];
+    var sy = [0, s, sh - s];
+    var sws = [s, sw - 2 * s, s];
+    var shs = [s, sh - 2 * s, s];
+    var dws = [s, w - 2 * s, s];
+    var dhs = [s, h - 2 * s, s];
+    for (var r = 0; r < 3; r++) {
+      for (var c = 0; c < 3; c++) {
+        ctx.drawImage(
+          img,
+          sx[c], sy[r], sws[c], shs[r],
+          x + (c === 0 ? 0 : (c === 1 ? s : w - s)),
+          y + (r === 0 ? 0 : (r === 1 ? s : h - s)),
+          dws[c], dhs[r]
+        );
+      }
+    }
+    return true;
+  }
+
   function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
   }
@@ -27,6 +51,21 @@
     this.hidden = {}; // key "r,c" during pop animation
     this.visualPos = {}; // key -> {x,y} override during fall/shift
     this.bg = '#0b0e18';
+    this.blockImg = [];
+    for (var bi = 0; bi < 6; bi++) this.blockImg.push(loadImage('../../assets/samegame/blocks/c' + bi + '.png'));
+    this.stoneImg = loadImage('../../assets/samegame/blocks/stone.png');
+    this.frameImg = loadImage('../../assets/ui/hud-frame.png');
+  }
+
+  function loadImage(src) {
+    var img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    return img;
+  }
+
+  function imageReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
   }
 
   BoardRenderer.prototype.setColors = function (arr) {
@@ -244,7 +283,19 @@
     var oy = y + (s - sz) / 2;
     if (highlight) oy -= Math.max(1, s * 0.04);
     var r = Math.max(6, sz * 0.24);
+    var skin = (value === SameGameCore.STONE) ? this.stoneImg : (this.blockImg && this.blockImg[value]);
     ctx.save();
+    if (imageReady(skin)) {
+      ctx.drawImage(skin, ox, oy, sz, sz);
+      if (highlight) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = Math.max(2.5, s * 0.07);
+        this._roundRect(ctx, ox - 1, oy - 1, sz + 2, sz + 2, r);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     this._roundRect(ctx, ox + 1, oy + 3, sz, sz, r);
     ctx.fill();
@@ -389,16 +440,18 @@
     ctx.save();
     ctx.translate(sx, sy);
 
-    var panel = ctx.createLinearGradient(0, this.offsetY, 0, this.offsetY + bh);
-    panel.addColorStop(0, '#1c2438');
-    panel.addColorStop(1, '#121826');
-    ctx.fillStyle = panel;
-    this._roundRect(ctx, this.offsetX - 10, this.offsetY - 10, bw + 20, bh + 20, 18);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 1.5;
-    this._roundRect(ctx, this.offsetX - 10, this.offsetY - 10, bw + 20, bh + 20, 18);
-    ctx.stroke();
+    if (!drawNineSlice(ctx, this.frameImg, this.offsetX - 14, this.offsetY - 14, bw + 28, bh + 28, 64)) {
+      var panel = ctx.createLinearGradient(0, this.offsetY, 0, this.offsetY + bh);
+      panel.addColorStop(0, '#1c2438');
+      panel.addColorStop(1, '#121826');
+      ctx.fillStyle = panel;
+      this._roundRect(ctx, this.offsetX - 10, this.offsetY - 10, bw + 20, bh + 20, 18);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1.5;
+      this._roundRect(ctx, this.offsetX - 10, this.offsetY - 10, bw + 20, bh + 20, 18);
+      ctx.stroke();
+    }
 
     for (var sr = 0; sr < rows; sr++) {
       for (var sc2 = 0; sc2 < cols; sc2++) {

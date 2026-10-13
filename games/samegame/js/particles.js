@@ -1,12 +1,48 @@
 (function (global) {
   'use strict';
 
+  function loadImage(src) {
+    var img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    return img;
+  }
+
+  function imageReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
+
   function ParticleSystem() {
     this.pool = [];
     this.active = [];
     this.waves = [];
     this.maxActive = 420;
+    this._tint = {};
+    var root = '../../assets/fx/';
+    this.sprites = {
+      glow: loadImage(root + 'glow.png'),
+      star: loadImage(root + 'star.png'),
+      spark: loadImage(root + 'spark.png'),
+      ring: loadImage(root + 'ring.png'),
+      shard: loadImage(root + 'shard.png')
+    };
   }
+
+  ParticleSystem.prototype._tinted = function (img, color) {
+    if (!imageReady(img)) return null;
+    var key = img.src + '|' + color;
+    if (this._tint[key]) return this._tint[key];
+    var c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    var g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = color || '#fff';
+    g.fillRect(0, 0, c.width, c.height);
+    this._tint[key] = c;
+    return c;
+  };
 
   ParticleSystem.prototype._alloc = function () {
     return this.pool.pop() || {
@@ -124,29 +160,36 @@
         ctx.fillRect(-hs, -hs, hs * 2, hs * 2);
         ctx.restore();
       } else {
-        ctx.globalAlpha = a * 0.28;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = a;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.42, 0, Math.PI * 2);
-        ctx.fill();
+        var puff = this._tinted(p.shape === 'star' ? this.sprites.star : this.sprites.glow, p.color);
+        if (puff) {
+          var d = p.size * (p.shape === 'star' ? 2.2 : 2.8);
+          ctx.globalAlpha = a;
+          ctx.drawImage(puff, p.x - d / 2, p.y - d / 2, d, d);
+        } else {
+          ctx.globalAlpha = a * 0.28;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = a;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 0.42, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     for (var j = 0; j < this.waves.length; j++) {
       var w = this.waves[j];
-      ctx.globalAlpha = w.alpha * 0.35;
-      ctx.fillStyle = w.color;
-      ctx.beginPath();
-      ctx.arc(w.x, w.y, w.r * 0.55, 0, Math.PI * 2);
-      ctx.fill();
+      var ring = this._tinted(this.sprites.ring, w.color);
       ctx.globalAlpha = w.alpha;
-      ctx.strokeStyle = w.color;
-      ctx.lineWidth = 5 * w.alpha + 1;
-      ctx.beginPath();
-      ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
-      ctx.stroke();
+      if (ring) {
+        ctx.drawImage(ring, w.x - w.r, w.y - w.r, w.r * 2, w.r * 2);
+      } else {
+        ctx.strokeStyle = w.color;
+        ctx.lineWidth = 5 * w.alpha + 1;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
   };

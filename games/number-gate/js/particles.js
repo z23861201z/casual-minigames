@@ -4,13 +4,52 @@
 (function (global) {
   'use strict';
 
+  function loadImage(src) {
+    var img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    return img;
+  }
+
+  function imageReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
+
   function ParticleSystem() {
     this.particles = [];
     this.floats = [];
     this.corpses = [];
     this.flies = [];
     this.rings = [];
+    this._tint = {};
+    var root = '../../assets/';
+    this.sprites = {
+      glow: loadImage(root + 'fx/glow.png'),
+      star: loadImage(root + 'fx/star.png'),
+      spark: loadImage(root + 'fx/spark.png'),
+      ring: loadImage(root + 'fx/ring.png'),
+      shard: loadImage(root + 'fx/shard.png'),
+      grunt: loadImage(root + 'number-gate/monsters/grunt.png'),
+      elite: loadImage(root + 'number-gate/monsters/elite.png'),
+      boss: loadImage(root + 'number-gate/monsters/boss.png')
+    };
   }
+
+  ParticleSystem.prototype._tinted = function (img, color) {
+    if (!imageReady(img)) return null;
+    var key = img.src + '|' + color;
+    if (this._tint[key]) return this._tint[key];
+    var c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    var g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = color || '#fff';
+    g.fillRect(0, 0, c.width, c.height);
+    this._tint[key] = c;
+    return c;
+  };
 
   ParticleSystem.prototype._trim = function () {
     if (this.particles.length > 280) this.particles.splice(0, this.particles.length - 240);
@@ -37,6 +76,7 @@
         maxLife: life,
         r: size * (0.45 + Math.random() * 1.05),
         color: color,
+        shape: opts.shape || (Math.random() < 0.22 ? 'star' : (Math.random() < 0.35 ? 'shard' : 'glow')),
         gravity: gravity,
         drag: opts.drag || 0.98,
         streak: streak,
@@ -179,12 +219,17 @@
     for (i = 0; i < this.rings.length; i++) {
       p = this.rings[i];
       a = Math.max(0, p.life / p.max);
+      var ring = this._tinted(this.sprites.ring, p.color);
       ctx.globalAlpha = a;
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = Math.max(1.5, p.w * a);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.stroke();
+      if (ring) {
+        ctx.drawImage(ring, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+      } else {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(1.5, p.w * a);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
     for (i = 0; i < this.particles.length; i++) {
       p = this.particles[i];
@@ -206,14 +251,20 @@
         ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
         ctx.restore();
       } else {
-        ctx.globalAlpha = a * 0.35;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r * 2.3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = a;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r * (0.55 + 0.45 * a), 0, Math.PI * 2);
-        ctx.fill();
+        var puff = this._tinted(this.sprites[p.shape] || this.sprites.glow, p.color);
+        if (puff) {
+          var d = p.r * (p.shape === 'glow' ? 4.4 : 3.2);
+          ctx.drawImage(puff, p.x - d / 2, p.y - d / 2, d, d);
+        } else {
+          ctx.globalAlpha = a * 0.35;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 2.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = a;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * (0.55 + 0.45 * a), 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     for (i = 0; i < this.corpses.length; i++) {
@@ -223,6 +274,11 @@
       ctx.globalAlpha = a;
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
+      var body = this.sprites[p.kind] || this.sprites.grunt;
+      if (imageReady(body)) {
+        var bd = p.r * 3.3;
+        ctx.drawImage(body, -bd / 2, -bd / 2, bd, bd);
+      } else {
       ctx.fillStyle = p.color;
       if (p.kind === 'boss') {
         ctx.beginPath();
@@ -243,6 +299,7 @@
         ctx.beginPath();
         ctx.arc(0, 0, p.r * 0.85, 0, Math.PI * 2);
         ctx.fill();
+      }
       }
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.font = '900 12px system-ui,sans-serif';

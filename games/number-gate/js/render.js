@@ -23,6 +23,18 @@
   };
 
   var CROWD_COLORS = ['#22d3ee', '#38bdf8', '#818cf8', '#e879f9', '#67e8f9', '#a5b4fc'];
+  var ASSET_ROOT = '../../assets/';
+
+  function loadImage(src) {
+    var img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    return img;
+  }
+
+  function imageReady(img) {
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
 
   function Renderer(canvas) {
     this.canvas = canvas;
@@ -49,6 +61,26 @@
     }
     this._crowdN = -1;
     this._crowd = [];
+    this.assets = {
+      doors: {
+        add: loadImage(ASSET_ROOT + 'number-gate/doors/add.png'),
+        mul: loadImage(ASSET_ROOT + 'number-gate/doors/mul.png'),
+        sub: loadImage(ASSET_ROOT + 'number-gate/doors/sub.png'),
+        div: loadImage(ASSET_ROOT + 'number-gate/doors/div.png'),
+        bomb: loadImage(ASSET_ROOT + 'number-gate/doors/bomb.png'),
+        shield: loadImage(ASSET_ROOT + 'number-gate/doors/shield.png'),
+        scoreMul: loadImage(ASSET_ROOT + 'number-gate/doors/score.png')
+      },
+      runner: [
+        loadImage(ASSET_ROOT + 'number-gate/characters/runner-0.png'),
+        loadImage(ASSET_ROOT + 'number-gate/characters/runner-1.png')
+      ],
+      monsters: {
+        grunt: loadImage(ASSET_ROOT + 'number-gate/monsters/grunt.png'),
+        elite: loadImage(ASSET_ROOT + 'number-gate/monsters/elite.png'),
+        boss: loadImage(ASSET_ROOT + 'number-gate/monsters/boss.png')
+      }
+    };
   }
 
   Renderer.prototype.resize = function () {
@@ -375,57 +407,61 @@
     ctx.ellipse(depth3d * 0.4, 8 * sc, bw * 0.46, Math.max(3, 9 * sc), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    /* Extruded side + top. */
-    ctx.fillStyle = shade(color, -0.5);
-    ctx.beginPath();
-    ctx.moveTo(bw / 2, -bh);
-    ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.45);
-    ctx.lineTo(bw / 2 + depth3d, depth3d * 0.2);
-    ctx.lineTo(bw / 2, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = shade(color, -0.15);
-    ctx.beginPath();
-    ctx.moveTo(-bw / 2, -bh);
-    ctx.lineTo(-bw / 2 + depth3d * 0.25, -bh - depth3d * 0.55);
-    ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.45);
-    ctx.lineTo(bw / 2, -bh);
-    ctx.closePath();
-    ctx.fill();
+    var doorImg = this.assets && this.assets.doors[e.type];
+    if (imageReady(doorImg)) {
+      ctx.drawImage(doorImg, -bw / 2, -bh, bw, bh);
+    } else {
+      /* Extruded side + top. */
+      ctx.fillStyle = shade(color, -0.5);
+      ctx.beginPath();
+      ctx.moveTo(bw / 2, -bh);
+      ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.45);
+      ctx.lineTo(bw / 2 + depth3d, depth3d * 0.2);
+      ctx.lineTo(bw / 2, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(color, -0.15);
+      ctx.beginPath();
+      ctx.moveTo(-bw / 2, -bh);
+      ctx.lineTo(-bw / 2 + depth3d * 0.25, -bh - depth3d * 0.55);
+      ctx.lineTo(bw / 2 + depth3d, -bh - depth3d * 0.45);
+      ctx.lineTo(bw / 2, -bh);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 18 * Math.min(1.4, sc + 0.3);
-    var face = ctx.createLinearGradient(-bw / 2, -bh, bw / 2, 0);
-    face.addColorStop(0, shade(color, 0.28));
-    face.addColorStop(0.5, color);
-    face.addColorStop(1, shade(color, -0.38));
-    ctx.fillStyle = face;
-    roundRect(ctx, -bw / 2, -bh, bw, bh, Math.max(4, 12 * sc));
-    ctx.fill();
-    ctx.shadowBlur = 0;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18 * Math.min(1.4, sc + 0.3);
+      var face = ctx.createLinearGradient(-bw / 2, -bh, bw / 2, 0);
+      face.addColorStop(0, shade(color, 0.28));
+      face.addColorStop(0.5, color);
+      face.addColorStop(1, shade(color, -0.38));
+      ctx.fillStyle = face;
+      roundRect(ctx, -bw / 2, -bh, bw, bh, Math.max(4, 12 * sc));
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
-    var inset = Math.max(3, bw * 0.09);
-    ctx.fillStyle = 'rgba(5,6,16,0.78)';
-    roundRect(ctx, -bw / 2 + inset, -bh + inset, bw - inset * 2, bh - inset * 2, Math.max(3, 8 * sc));
-    ctx.fill();
+      var inset = Math.max(3, bw * 0.09);
+      ctx.fillStyle = 'rgba(5,6,16,0.78)';
+      roundRect(ctx, -bw / 2 + inset, -bh + inset, bw - inset * 2, bh - inset * 2, Math.max(3, 8 * sc));
+      ctx.fill();
 
-    /* Energy column inside the portal. */
-    var beam = ctx.createLinearGradient(0, -bh, 0, 0);
-    beam.addColorStop(0, 'rgba(255,255,255,0)');
-    beam.addColorStop(0.45, hexAlpha(color, 0.45));
-    beam.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = beam;
-    ctx.fillRect(-bw * 0.08, -bh + inset, bw * 0.16, bh - inset * 2);
+      var beam = ctx.createLinearGradient(0, -bh, 0, 0);
+      beam.addColorStop(0, 'rgba(255,255,255,0)');
+      beam.addColorStop(0.45, hexAlpha(color, 0.45));
+      beam.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = beam;
+      ctx.fillRect(-bw * 0.08, -bh + inset, bw * 0.16, bh - inset * 2);
 
-    var scan = ((state.time * 0.85 + (e.id || 0) * 0.17) % 1);
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    var scanY = -bh + inset + scan * (bh - inset * 2 - 4);
-    ctx.fillRect(-bw / 2 + inset, scanY, bw - inset * 2, Math.max(2, 3 * sc));
+      var scan = ((state.time * 0.85 + (e.id || 0) * 0.17) % 1);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      var scanY = -bh + inset + scan * (bh - inset * 2 - 4);
+      ctx.fillRect(-bw / 2 + inset, scanY, bw - inset * 2, Math.max(2, 3 * sc));
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = Math.max(1.5, 3 * sc);
-    roundRect(ctx, -bw / 2, -bh, bw, bh, Math.max(4, 12 * sc));
-    ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctx.lineWidth = Math.max(1.5, 3 * sc);
+      roundRect(ctx, -bw / 2, -bh, bw, bh, Math.max(4, 12 * sc));
+      ctx.stroke();
+    }
 
     var label = e.label || '';
     var len = label.length;
@@ -476,6 +512,11 @@
     ctx.ellipse(0, r * 0.95, r * 0.85, r * 0.24, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    var monsterImg = this.assets && this.assets.monsters[e.enemyKind];
+    if (imageReady(monsterImg)) {
+      var msize = r * 2.75;
+      ctx.drawImage(monsterImg, -msize / 2, r * 0.92 - msize * 0.9, msize, msize);
+    } else {
     ctx.shadowColor = color;
     ctx.shadowBlur = 16 * p.scale;
 
@@ -543,6 +584,7 @@
       ctx.beginPath();
       ctx.arc(0, r * 0.48, r * 0.22, 1.2 * Math.PI, 1.8 * Math.PI);
       ctx.stroke();
+    }
     }
 
     /* Killable ring: green means the crowd wins, red means dodge. */
@@ -660,13 +702,20 @@
     /* Back rows first. */
     for (var i = slots.length - 1; i >= 0; i--) {
       var sl = slots[i];
+      var frames = this.assets && this.assets.runner;
+      var frame = null;
+      if (frames && imageReady(frames[0])) {
+        frame = frames[(Math.floor(state.time * 8) + i) % 2];
+        if (!imageReady(frame)) frame = frames[0];
+      }
       drawRunner(
         ctx,
         sl.x * body,
         sl.y * body,
         body * sl.s * (i === 0 ? 1.12 : 1),
         state.time * 16 + i,
-        i === 0 ? '#e0fbff' : CROWD_COLORS[i % CROWD_COLORS.length]
+        i === 0 ? '#e0fbff' : CROWD_COLORS[i % CROWD_COLORS.length],
+        frame
       );
     }
     ctx.shadowBlur = 0;
@@ -819,7 +868,12 @@
     return Math.min(24, 18 + Math.floor(Math.log2(power / 40)));
   }
 
-  function drawRunner(ctx, x, y, s, phase, color) {
+  function drawRunner(ctx, x, y, s, phase, color, sprite) {
+    if (imageReady(sprite)) {
+      var spr = 30 * s;
+      ctx.drawImage(sprite, x - spr * 0.5, y + 2 - spr * 0.94, spr, spr);
+      return;
+    }
     var swing = Math.sin(phase) * 4.5 * s;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();

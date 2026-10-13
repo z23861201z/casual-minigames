@@ -70,23 +70,14 @@ code {
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark {
   width: 40px; height: 40px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--cyan), var(--accent));
+  border-radius: 12px;
+  background: url("../assets/hub/logo.png") center / cover no-repeat;
   box-shadow: 0 10px 28px rgba(139,92,246,0.45);
   position: relative;
   overflow: hidden;
   animation: brandPulse 3s ease-in-out infinite;
 }
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: 9px;
-  border-radius: 6px;
-  border: 2px solid rgba(255,255,255,0.9);
-  border-bottom: none;
-  border-left: none;
-  transform: rotate(45deg);
-}
+.brand-mark::after { content: none; }
 @keyframes brandPulse {
   0%, 100% { box-shadow: 0 10px 28px rgba(139,92,246,0.45); }
   50% { box-shadow: 0 10px 36px rgba(34,211,238,0.5); }
@@ -159,22 +150,37 @@ code {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 20px;
-  border-radius: 16px;
+  padding: 4px 14px;
+  border-radius: 0;
   font-weight: 800;
   font-size: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,0.05);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  color: #fff;
+  border: 16px solid transparent;
+  border-image: url("../assets/ui/btn-ghost.png") 64 fill / 16px / 0 stretch;
+  background: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.btn:hover { transform: translateY(-3px); background: rgba(255,255,255,0.09); }
+.btn:hover {
+  transform: translateY(-3px);
+  border-image-source: url("../assets/ui/btn-ghost-hover.png");
+  background: none;
+}
+.btn:active {
+  border-image-source: url("../assets/ui/btn-ghost-pressed.png");
+  transform: translateY(0) scale(0.98);
+}
 .btn-primary {
-  background: linear-gradient(135deg, #06b6d4, #7c3aed);
-  border: none;
+  border-image-source: url("../assets/ui/btn-primary.png");
+  color: #fff;
   box-shadow: 0 12px 36px rgba(124,58,237,0.4);
 }
-.btn-primary:hover { box-shadow: 0 16px 44px rgba(124,58,237,0.55); }
-.btn-ghost { backdrop-filter: blur(8px); }
+.btn-primary:hover {
+  border-image-source: url("../assets/ui/btn-primary-hover.png");
+  box-shadow: 0 16px 44px rgba(124,58,237,0.55);
+}
+.btn-primary:active { border-image-source: url("../assets/ui/btn-primary-pressed.png"); }
+.btn-ghost { border-image-source: url("../assets/ui/btn-ghost.png"); }
 .btn-ico { font-size: 12px; opacity: 0.9; }
 
 .hero-meta {
@@ -197,11 +203,15 @@ code {
   position: relative;
   height: 320px;
   border-radius: 28px;
-  background: linear-gradient(165deg, rgba(14,20,50,0.9), rgba(42,16,80,0.75));
+  background: #0a1028 url("../assets/hub/hero.png") center / cover no-repeat;
   border: 1px solid rgba(255,255,255,0.12);
   overflow: hidden;
   box-shadow: 0 32px 90px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
 }
+.stage-glow,
+.stage-road,
+.stage-gates,
+.stage-runner { display: none; }
 .stage-glow {
   position: absolute;
   width: 200px; height: 200px;
@@ -248,7 +258,7 @@ code {
 .stage-gates {
   position: absolute;
   inset: 0;
-  display: grid;
+  display: none;
   grid-template-columns: 1fr 1fr 1fr;
   place-items: end center;
   padding: 0 36px 72px;
@@ -448,19 +458,22 @@ code {
   100% { transform: translateX(120%); }
 }
 .cover-gate {
-  background: linear-gradient(145deg, #0a0e27 0%, #2a1560 45%, #0891b2 160%);
+  background: #0a0e27 url("../assets/hub/cover-number-gate.png") center / cover no-repeat;
 }
 .cover-samegame {
-  background: linear-gradient(135deg, rgba(255,77,109,0.95), rgba(77,150,255,0.9) 50%, rgba(107,203,119,0.9));
+  background: #1a1030 url("../assets/hub/cover-samegame.png") center / cover no-repeat;
 }
 .cover-soon {
-  background: linear-gradient(135deg, #1a2238, #2a3355);
+  background: #12182c url("../assets/hub/cover-soon.png") center / cover no-repeat;
 }
+.cover-gates,
+.blocks,
+.soon-mark { display: none; }
 
 .cover-gates {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: none;
   align-items: flex-end;
   justify-content: center;
   gap: 14px;
@@ -504,7 +517,7 @@ code {
 .blocks {
   position: absolute;
   inset: 0;
-  display: grid;
+  display: none;
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 7px;
@@ -523,7 +536,7 @@ code {
 .soon-mark {
   position: absolute;
   inset: 0;
-  display: grid;
+  display: none;
   place-items: center;
   font-size: 48px;
   opacity: 0.45;

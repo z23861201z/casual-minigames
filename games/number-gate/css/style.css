@@ -80,15 +80,14 @@ html, body {
 }
 
 .ng-stat {
-  background: rgba(8, 10, 30, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  padding: 7px 14px;
+  background: none;
+  border: 12px solid transparent;
+  border-image: url("../../../assets/ui/hud-chip.png") 40 fill / 12px / 0 stretch;
+  border-radius: 0;
+  padding: 2px 8px 4px;
   min-width: 76px;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 .ng-stat-l {
@@ -111,21 +110,23 @@ html, body {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(8, 10, 30, 0.65);
-  backdrop-filter: blur(12px);
+  border: none;
+  background: url("../../../assets/ui/btn-icon.png") center / 100% 100% no-repeat;
   color: var(--text);
   font-size: 15px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transition: transform 0.12s, background 0.12s;
+  box-shadow: none;
+  transition: transform 0.12s;
 }
-.ng-icon-btn:active { transform: scale(0.94); }
+.ng-icon-btn:active {
+  background-image: url("../../../assets/ui/btn-icon-pressed.png");
+  transform: scale(0.94);
+}
 
 .ng-stat-power {
-  border-color: rgba(34, 211, 238, 0.45);
-  background: rgba(8, 20, 40, 0.72);
-  box-shadow: 0 0 18px rgba(34, 211, 238, 0.18);
+  border-image-source: url("../../../assets/ui/badge-cyan.png");
+  background: none;
+  box-shadow: none;
 }
 .ng-stat-power span:last-child {
   color: #67e8f9;
@@ -145,11 +146,13 @@ html, body {
 .ng-goal {
   position: relative;
   width: min(320px, 70%);
+  box-sizing: content-box;
   height: 8px;
   margin: 10px auto 0;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+  border: 6px solid transparent;
+  border-image: url("../../../assets/ui/progress-track.png") 28 fill / 6px / 0 stretch;
+  background: none;
   overflow: hidden;
   pointer-events: none;
 }
@@ -157,9 +160,9 @@ html, body {
 .ng-goal-fill {
   height: 100%;
   width: 0%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #22d3ee, #a855f7 55%, #fbbf24);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.7);
+  border-radius: 0;
+  background: url("../../../assets/ui/progress-fill.png") center / 100% 100% no-repeat;
+  box-shadow: none;
 }
 
 .ng-float-badges {
@@ -171,20 +174,22 @@ html, body {
 }
 .ng-badge {
   display: inline-block;
-  background: rgba(20, 184, 166, 0.28);
-  border: 1px solid #14b8a6;
-  border-radius: 999px;
-  padding: 3px 12px;
+  background: none;
+  border: 8px solid transparent;
+  border-image: url("../../../assets/ui/badge-cyan.png") 36 fill / 8px / 0 stretch;
+  border-radius: 0;
+  padding: 0 8px;
   font-size: 12px;
   font-weight: 700;
   margin: 0 3px;
-  box-shadow: 0 0 12px rgba(20, 184, 166, 0.35);
+  box-shadow: none;
+  color: #fff;
 }
 .ng-badge-mult {
-  background: rgba(236, 72, 153, 0.28);
-  border-color: #ec4899;
-  color: #f9a8d4;
-  box-shadow: 0 0 12px rgba(236, 72, 153, 0.35);
+  border-image-source: url("../../../assets/ui/badge-pink.png");
+  background: none;
+  color: #fff;
+  box-shadow: none;
 }
 
 /* ===== Touch controls ===== */
@@ -204,18 +209,17 @@ html, body {
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  border: 2px solid rgba(34, 211, 238, 0.5);
-  background: rgba(34, 211, 238, 0.14);
-  color: var(--accent);
+  border: none;
+  background: url("../../../assets/ui/btn-lane.png") center / 100% 100% no-repeat;
+  color: #ecfeff;
   font-size: 30px;
   cursor: pointer;
-  backdrop-filter: blur(8px);
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 0 24px rgba(34, 211, 238, 0.2), inset 0 0 20px rgba(34, 211, 238, 0.08);
-  transition: transform 0.1s, background 0.1s;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: transform 0.1s;
 }
 .ng-lane-btn:active {
-  background: rgba(34, 211, 238, 0.35);
+  background-image: url("../../../assets/ui/btn-lane-pressed.png");
   transform: scale(0.92);
 }
 
@@ -247,17 +251,15 @@ html, body {
   width: min(400px, 100%);
   max-height: 92vh;
   overflow: auto;
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 28px;
-  padding: 28px 22px 30px;
-  box-shadow:
-    0 28px 90px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 60px rgba(168, 85, 247, 0.12);
+  background-color: #0b1024;
+  background-clip: padding-box;
+  border: 28px solid transparent;
+  border-image: url("../../../assets/ui/hud-frame.png") 64 fill / 28px / 0 stretch;
+  border-radius: 0;
+  padding: 10px 16px 16px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
   text-align: center;
   animation: cardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-  backdrop-filter: blur(20px);
 }
 
 .ng-back {
@@ -345,26 +347,34 @@ html, body {
 .ng-btn {
   display: block;
   width: 100%;
-  padding: 15px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  padding: 4px 12px;
+  border-radius: 0;
+  border: 16px solid transparent;
+  border-image: url("../../../assets/ui/btn-ghost.png") 64 fill / 16px / 0 stretch;
+  background: none;
   color: var(--text);
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;
   margin-top: 8px;
   letter-spacing: 0.02em;
-  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s;
+}
+.ng-btn:hover {
+  border-image-source: url("../../../assets/ui/btn-ghost-hover.png");
+  background: none;
+}
+.ng-btn:active {
+  border-image-source: url("../../../assets/ui/btn-ghost-pressed.png");
+  transform: scale(0.98);
 }
 .ng-btn-primary {
-  background: linear-gradient(135deg, #06b6d4, #7c3aed);
-  border: none;
-  box-shadow: 0 10px 32px rgba(124, 58, 237, 0.4);
+  border-image-source: url("../../../assets/ui/btn-primary.png");
+  color: #fff;
 }
-.ng-btn-primary:hover { box-shadow: 0 14px 40px rgba(124, 58, 237, 0.5); }
-.ng-btn:hover { background: rgba(255, 255, 255, 0.1); }
-.ng-btn:active { transform: scale(0.97); }
+.ng-btn-primary:hover { border-image-source: url("../../../assets/ui/btn-primary-hover.png"); }
+.ng-btn-primary:active { border-image-source: url("../../../assets/ui/btn-primary-pressed.png"); }
 
 .ng-level-picker {
   display: grid;
@@ -378,23 +388,24 @@ html, body {
 }
 
 .ng-level-chip {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.3);
+  border: 10px solid transparent;
+  border-image: url("../../../assets/ui/hud-chip.png") 40 fill / 10px / 0 stretch;
+  background: none;
   color: var(--text);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 0;
+  padding: 4px 8px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+  transition: transform 0.12s;
 }
-.ng-level-chip:hover { border-color: rgba(34, 211, 238, 0.35); transform: translateY(-1px); }
+.ng-level-chip:hover { transform: translateY(-1px); }
 .ng-level-chip.active {
-  border-color: var(--accent);
-  background: rgba(34, 211, 238, 0.16);
-  color: var(--accent);
-  box-shadow: 0 0 16px rgba(34, 211, 238, 0.15);
+  border-image-source: url("../../../assets/ui/badge-cyan.png");
+  background: none;
+  color: #ecfeff;
+  box-shadow: none;
 }
 
 .ng-help {
@@ -412,10 +423,11 @@ html, body {
   color: var(--muted);
 }
 .ng-end-stats > div {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 12px 8px;
+  background: none;
+  border: 12px solid transparent;
+  border-image: url("../../../assets/ui/hud-chip.png") 40 fill / 12px / 0 stretch;
+  border-radius: 0;
+  padding: 4px 8px;
 }
 .ng-end-stats b {
   color: var(--text);
