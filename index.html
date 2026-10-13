@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070b1a" />
+  <meta name="description" content="Casual Minigames — 纯静态精品小游戏合集：消灭同色方块、数字门跑酷。" />
+  <title>Casual Minigames · 休闲小游戏合集</title>
+  <link rel="stylesheet" href="css/hub.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="nav">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <span>Casual Minigames</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#games">游戏</a>
+        <a href="https://github.com/" id="gh-link" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Pure Static · Zero Build</div>
+        <h1>打开即玩的<br /><span>精品休闲合集</span></h1>
+        <p>
+          移动友好的 Canvas 小游戏枢纽。现在可玩「消灭同色方块」与「数字门跑酷」，
+          后续可继续扩展卡位。本地双击 HTML，或丢上任意静态托管即可上线。
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="games/number-gate/index.html">玩数字门跑酷</a>
+          <a class="btn" href="games/samegame/index.html">玩消灭同色</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="orb orb-c"></div>
+        <div class="gate-illus">
+          <div class="gate-pill g1">+12</div>
+          <div class="gate-pill g2">×2</div>
+          <div class="gate-pill g3">-8</div>
+        </div>
+        <div class="runner-dot"></div>
+      </div>
+    </section>
+
+    <section class="section" id="games">
+      <div class="section-head">
+        <div>
+          <h2>游戏库</h2>
+          <p>点卡片进入 · 键盘与触控均支持</p>
+        </div>
+      </div>
+      <div class="grid">
+        <a class="card" href="games/samegame/index.html">
+          <div class="card-cover cover-samegame">
+            <div class="cover-pattern"></div>
+            <div class="blocks">
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags"><span class="tag">益智</span><span class="tag">SameGame</span><span class="tag">12 关</span></div>
+            <h3>消灭同色方块</h3>
+            <p>点击相连同色块消除，重力下落、空列压缩。连击倍率、粒子与限步关卡，短视频式爽感清盘。</p>
+            <span class="card-cta">开始游玩 →</span>
+          </div>
+        </a>
+
+        <a class="card" href="games/number-gate/index.html">
+          <div class="card-cover cover-gate">
+            <div class="cover-pattern"></div>
+            <div class="mini-gates"><i>+15</i><i>×3</i><i>BOMB</i></div>
+          </div>
+          <div class="card-body">
+            <div class="tags"><span class="tag">跑酷</span><span class="tag">数字门</span><span class="tag">无尽</span></div>
+            <h3>数字门跑酷</h3>
+            <p>自动前进，左右选门改写力量，遇怪用数值结算。粒子、震屏、连击与 Web Audio，公测级手感。</p>
+            <span class="card-cta">开始游玩 →</span>
+          </div>
+        </a>
+
+        <div class="card soon" aria-disabled="true">
+          <div class="card-cover cover-soon">
+            <div class="cover-pattern"></div>
+            <div class="soon-mark">+</div>
+          </div>
+          <div class="card-body">
+            <div class="tags"><span class="tag">即将推出</span></div>
+            <h3>新游戏席位</h3>
+            <p>合集已预留扩展位。下一部作品可直接挂到 <code>games/</code> 并在此增加卡片。</p>
+            <span class="card-cta">Coming Soon</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>© Casual Minigames · 纯静态 HTML / JS / Canvas · 零构建</div>
+      <div>本地打开根目录 <code>index.html</code>，或使用任意 Static Host / GitHub Pages</div>
+    </footer>
+  </div>
+</body>
+</html>
