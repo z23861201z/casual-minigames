@@ -1,345 +1,656 @@
 {
-  "version": 1,
+  "version": 2,
   "defaults": {
     "lanes": 3,
-    "laneChangeMs": 120,
-    "playerZ": 0.78,
-    "hitBand": 0.06,
-    "minPower": 1,
-    "maxScoreMult": 4,
-    "comboWindowMs": 2500
+    "laneChangeMs": 110,
+    "playerHitZ": 8,
+    "minWeapon": 1,
+    "maxWeapon": 999
   },
   "gateTypes": {
-    "add": { "color": "#2ecc71", "label": "+{n}" },
-    "mul": { "color": "#f1c40f", "label": "×{n}" },
-    "sub": { "color": "#e74c3c", "label": "-{n}" },
-    "div": { "color": "#c0392b", "label": "÷{n}" },
-    "bomb": { "color": "#e67e22", "label": "BOMB" },
-    "shield": { "color": "#1abc9c", "label": "SHIELD" },
-    "scoreMul": { "color": "#e056fd", "label": "SCORE+" }
+    "add": {
+      "color": "#f1c40f",
+      "label": "+{n}"
+    },
+    "mul": {
+      "color": "#5dade2",
+      "label": "×{n}"
+    },
+    "sub": {
+      "color": "#e74c3c",
+      "label": "-{n}"
+    },
+    "pickup": {
+      "color": "#f39c12",
+      "label": "GUN +{n}"
+    }
   },
   "levels": [
     {
       "id": 1,
-      "name": "初次冲刺",
+      "name": "初次开火",
       "tier": "tutorial",
-      "startPower": 5,
-      "targetDistance": 400,
-      "baseSpeed": 140,
-      "maxSpeed": 200,
+      "startWeapon": 4,
+      "targetDistance": 350,
+      "baseSpeed": 130,
+      "maxSpeed": 190,
       "accel": 0.02,
-      "gateGap": 180,
-      "enemyGap": 220,
+      "gateGap": 160,
+      "enemyGap": 150,
+      "packSize": [
+        4,
+        6
+      ],
       "gateTable": [
-        { "type": "add", "n": [5, 8, 10, 12], "w": 4 },
-        { "type": "mul", "n": [2], "w": 1 },
-        { "type": "sub", "n": [3, 5], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            1,
+            3,
+            5,
+            8
+          ],
+          "w": 5
+        },
+        {
+          "type": "mul",
+          "n": [
+            2
+          ],
+          "w": 1
+        },
+        {
+          "type": "sub",
+          "n": [
+            1,
+            2
+          ],
+          "w": 1
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [3, 6, 8], "w": 5 }
+        {
+          "kind": "grunt",
+          "hp": [
+            4,
+            6,
+            8
+          ],
+          "w": 5
+        }
       ],
-      "boss": { "hp": 20, "label": "练习木桩" },
+      "pickupBonus": [
+        3,
+        5
+      ],
       "tutorial": true
     },
     {
       "id": 2,
-      "name": "加倍快感",
+      "name": "双门抉择",
       "tier": "tutorial",
-      "startPower": 8,
-      "targetDistance": 500,
-      "baseSpeed": 150,
-      "maxSpeed": 220,
+      "startWeapon": 4,
+      "targetDistance": 420,
+      "baseSpeed": 140,
+      "maxSpeed": 210,
       "accel": 0.025,
-      "gateGap": 170,
-      "enemyGap": 200,
+      "gateGap": 150,
+      "enemyGap": 140,
+      "packSize": [
+        5,
+        9
+      ],
       "gateTable": [
-        { "type": "add", "n": [6, 10, 14], "w": 3 },
-        { "type": "mul", "n": [2, 3], "w": 2 },
-        { "type": "sub", "n": [5, 8], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            1,
+            5,
+            8
+          ],
+          "w": 4
+        },
+        {
+          "type": "mul",
+          "n": [
+            2
+          ],
+          "w": 2
+        },
+        {
+          "type": "sub",
+          "n": [
+            2,
+            3
+          ],
+          "w": 1
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [5, 10, 15], "w": 4 }
+        {
+          "kind": "grunt",
+          "hp": [
+            5,
+            8,
+            12
+          ],
+          "w": 5
+        }
       ],
-      "boss": { "hp": 35, "label": "石肤怪" }
+      "pickupBonus": [
+        5,
+        8
+      ]
     },
     {
       "id": 3,
-      "name": "护盾登场",
-      "tier": "tutorial",
-      "startPower": 10,
-      "targetDistance": 550,
-      "baseSpeed": 160,
-      "maxSpeed": 240,
+      "name": "火力爬升",
+      "tier": "normal",
+      "startWeapon": 4,
+      "targetDistance": 500,
+      "baseSpeed": 150,
+      "maxSpeed": 230,
       "accel": 0.03,
-      "gateGap": 160,
-      "enemyGap": 190,
+      "gateGap": 145,
+      "enemyGap": 130,
+      "packSize": [
+        6,
+        10
+      ],
       "gateTable": [
-        { "type": "add", "n": [8, 12, 16], "w": 3 },
-        { "type": "mul", "n": [2], "w": 2 },
-        { "type": "sub", "n": [8, 12], "w": 1 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "bomb", "n": [1], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            3,
+            5,
+            8,
+            10
+          ],
+          "w": 4
+        },
+        {
+          "type": "mul",
+          "n": [
+            2
+          ],
+          "w": 2
+        },
+        {
+          "type": "sub",
+          "n": [
+            3,
+            5
+          ],
+          "w": 1
+        },
+        {
+          "type": "pickup",
+          "n": [
+            5,
+            8
+          ],
+          "w": 1
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [8, 14, 20], "w": 4 },
-        { "kind": "elite", "hp": [25, 30], "w": 1 }
+        {
+          "kind": "grunt",
+          "hp": [
+            10,
+            16,
+            22
+          ],
+          "w": 4
+        },
+        {
+          "kind": "elite",
+          "hp": [
+            30,
+            40
+          ],
+          "w": 1
+        }
       ],
-      "boss": { "hp": 50, "label": "盾裂者" }
+      "pickupBonus": [
+        5,
+        10
+      ]
     },
     {
       "id": 4,
-      "name": "三道抉择",
-      "tier": "medium",
-      "startPower": 12,
-      "targetDistance": 600,
-      "baseSpeed": 170,
-      "maxSpeed": 260,
+      "name": "尸潮来袭",
+      "tier": "normal",
+      "startWeapon": 5,
+      "targetDistance": 550,
+      "baseSpeed": 160,
+      "maxSpeed": 250,
       "accel": 0.035,
-      "gateGap": 155,
-      "enemyGap": 180,
-      "gatesPerRow": 3,
+      "gateGap": 140,
+      "enemyGap": 120,
+      "packSize": [
+        7,
+        12
+      ],
       "gateTable": [
-        { "type": "add", "n": [10, 15, 20], "w": 3 },
-        { "type": "mul", "n": [2, 3], "w": 2 },
-        { "type": "sub", "n": [10, 15], "w": 2 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "scoreMul", "n": [1], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            5,
+            8,
+            12
+          ],
+          "w": 3
+        },
+        {
+          "type": "mul",
+          "n": [
+            2,
+            3
+          ],
+          "w": 2
+        },
+        {
+          "type": "sub",
+          "n": [
+            4,
+            6
+          ],
+          "w": 1
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [12, 20, 28], "w": 3 },
-        { "kind": "elite", "hp": [35, 45], "w": 2 }
+        {
+          "kind": "grunt",
+          "hp": [
+            12,
+            20
+          ],
+          "w": 4
+        },
+        {
+          "kind": "elite",
+          "hp": [
+            35,
+            50
+          ],
+          "w": 2
+        }
       ],
-      "boss": { "hp": 70, "label": "三首犬" }
+      "pickupBonus": [
+        8,
+        10
+      ]
     },
     {
       "id": 5,
-      "name": "炸弹巷",
-      "tier": "medium",
-      "startPower": 15,
-      "targetDistance": 650,
-      "baseSpeed": 180,
-      "maxSpeed": 280,
+      "name": "清道夫",
+      "tier": "normal",
+      "startWeapon": 6,
+      "targetDistance": 600,
+      "baseSpeed": 170,
+      "maxSpeed": 270,
       "accel": 0.04,
-      "gateGap": 150,
-      "enemyGap": 170,
+      "gateGap": 135,
+      "enemyGap": 115,
+      "packSize": [
+        8,
+        12
+      ],
       "gateTable": [
-        { "type": "add", "n": [12, 18, 24], "w": 2 },
-        { "type": "mul", "n": [2, 3], "w": 2 },
-        { "type": "sub", "n": [12, 20], "w": 2 },
-        { "type": "bomb", "n": [1], "w": 2 },
-        { "type": "shield", "n": [1], "w": 2 }
+        {
+          "type": "add",
+          "n": [
+            5,
+            8,
+            15
+          ],
+          "w": 3
+        },
+        {
+          "type": "mul",
+          "n": [
+            2,
+            3
+          ],
+          "w": 2
+        },
+        {
+          "type": "sub",
+          "n": [
+            5,
+            8
+          ],
+          "w": 2
+        },
+        {
+          "type": "pickup",
+          "n": [
+            8,
+            10
+          ],
+          "w": 1
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [15, 25], "w": 3 },
-        { "kind": "elite", "hp": [40, 55], "w": 2 }
+        {
+          "kind": "grunt",
+          "hp": [
+            15,
+            25
+          ],
+          "w": 3
+        },
+        {
+          "kind": "elite",
+          "hp": [
+            40,
+            60
+          ],
+          "w": 2
+        }
       ],
-      "boss": { "hp": 90, "label": "爆裂傀儡" }
+      "pickupBonus": [
+        8,
+        12
+      ]
     },
     {
       "id": 6,
-      "name": "除法陷阱",
-      "tier": "medium",
-      "startPower": 20,
+      "name": "弹幕风暴",
+      "tier": "hard",
+      "startWeapon": 8,
       "targetDistance": 700,
-      "baseSpeed": 190,
+      "baseSpeed": 180,
       "maxSpeed": 300,
       "accel": 0.045,
-      "gateGap": 145,
-      "enemyGap": 165,
+      "gateGap": 130,
+      "enemyGap": 110,
+      "packSize": [
+        8,
+        14
+      ],
       "gateTable": [
-        { "type": "add", "n": [15, 25], "w": 2 },
-        { "type": "mul", "n": [2, 3, 4], "w": 2 },
-        { "type": "sub", "n": [15, 25], "w": 1 },
-        { "type": "div", "n": [2], "w": 2 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "scoreMul", "n": [1], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            8,
+            12,
+            20
+          ],
+          "w": 3
+        },
+        {
+          "type": "mul",
+          "n": [
+            2,
+            3
+          ],
+          "w": 3
+        },
+        {
+          "type": "sub",
+          "n": [
+            8,
+            12
+          ],
+          "w": 2
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [20, 35], "w": 3 },
-        { "kind": "elite", "hp": [50, 70], "w": 2 }
+        {
+          "kind": "grunt",
+          "hp": [
+            20,
+            30
+          ],
+          "w": 3
+        },
+        {
+          "kind": "elite",
+          "hp": [
+            50,
+            80
+          ],
+          "w": 3
+        }
       ],
-      "boss": { "hp": 120, "label": "裂数魔" }
+      "pickupBonus": [
+        10,
+        15
+      ]
     },
     {
       "id": 7,
-      "name": "倍率狂欢",
+      "name": "夜行尸群",
       "tier": "hard",
-      "startPower": 18,
-      "targetDistance": 750,
-      "baseSpeed": 200,
-      "maxSpeed": 320,
+      "startWeapon": 10,
+      "targetDistance": 800,
+      "baseSpeed": 190,
+      "maxSpeed": 330,
       "accel": 0.05,
-      "gateGap": 140,
-      "enemyGap": 160,
+      "gateGap": 125,
+      "enemyGap": 105,
+      "packSize": [
+        10,
+        15
+      ],
       "gateTable": [
-        { "type": "add", "n": [10, 20], "w": 2 },
-        { "type": "mul", "n": [2, 3, 4], "w": 3 },
-        { "type": "sub", "n": [20, 30], "w": 2 },
-        { "type": "scoreMul", "n": [1], "w": 2 },
-        { "type": "bomb", "n": [1], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            10,
+            15,
+            25
+          ],
+          "w": 3
+        },
+        {
+          "type": "mul",
+          "n": [
+            2,
+            3
+          ],
+          "w": 3
+        },
+        {
+          "type": "sub",
+          "n": [
+            10,
+            15
+          ],
+          "w": 2
+        },
+        {
+          "type": "pickup",
+          "n": [
+            10,
+            15
+          ],
+          "w": 1
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [25, 40], "w": 2 },
-        { "kind": "elite", "hp": [60, 90], "w": 3 }
+        {
+          "kind": "grunt",
+          "hp": [
+            25,
+            40
+          ],
+          "w": 2
+        },
+        {
+          "kind": "elite",
+          "hp": [
+            60,
+            100
+          ],
+          "w": 3
+        },
+        {
+          "kind": "boss",
+          "hp": [
+            150
+          ],
+          "w": 1
+        }
       ],
-      "boss": { "hp": 160, "label": "金倍率兽" }
+      "pickupBonus": [
+        12,
+        20
+      ]
     },
     {
       "id": 8,
-      "name": "高压窄门",
+      "name": "末日走廊",
       "tier": "hard",
-      "startPower": 25,
-      "targetDistance": 800,
-      "baseSpeed": 210,
-      "maxSpeed": 340,
-      "accel": 0.055,
-      "gateGap": 130,
-      "enemyGap": 150,
-      "gatesPerRow": 3,
-      "gateTable": [
-        { "type": "add", "n": [20, 30], "w": 2 },
-        { "type": "mul", "n": [2, 3], "w": 2 },
-        { "type": "sub", "n": [25, 40], "w": 2 },
-        { "type": "div", "n": [2, 3], "w": 1 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "bomb", "n": [1], "w": 1 }
-      ],
-      "enemyTable": [
-        { "kind": "grunt", "hp": [30, 50], "w": 2 },
-        { "kind": "elite", "hp": [80, 110], "w": 3 }
-      ],
-      "boss": { "hp": 200, "label": "窄道屠夫" }
-    },
-    {
-      "id": 9,
-      "name": "精英围猎",
-      "tier": "hard",
-      "startPower": 30,
-      "targetDistance": 850,
-      "baseSpeed": 220,
-      "maxSpeed": 360,
-      "accel": 0.06,
-      "gateGap": 125,
-      "enemyGap": 140,
-      "gateTable": [
-        { "type": "add", "n": [25, 40], "w": 2 },
-        { "type": "mul", "n": [2, 3, 4], "w": 3 },
-        { "type": "sub", "n": [30, 50], "w": 1 },
-        { "type": "div", "n": [2], "w": 1 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "scoreMul", "n": [1], "w": 1 }
-      ],
-      "enemyTable": [
-        { "kind": "elite", "hp": [70, 100, 130], "w": 4 },
-        { "kind": "grunt", "hp": [40, 60], "w": 1 }
-      ],
-      "boss": { "hp": 260, "label": "围猎首领" }
-    },
-    {
-      "id": 10,
-      "name": "终焉之门",
-      "tier": "hard",
-      "startPower": 35,
+      "startWeapon": 12,
       "targetDistance": 900,
-      "baseSpeed": 230,
-      "maxSpeed": 380,
-      "accel": 0.065,
+      "baseSpeed": 200,
+      "maxSpeed": 360,
+      "accel": 0.055,
       "gateGap": 120,
-      "enemyGap": 135,
-      "gatesPerRow": 3,
+      "enemyGap": 100,
+      "packSize": [
+        10,
+        16
+      ],
       "gateTable": [
-        { "type": "add", "n": [30, 50], "w": 2 },
-        { "type": "mul", "n": [2, 3, 5], "w": 3 },
-        { "type": "sub", "n": [40, 60], "w": 2 },
-        { "type": "div", "n": [2, 3], "w": 1 },
-        { "type": "bomb", "n": [1], "w": 1 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "scoreMul", "n": [1], "w": 1 }
+        {
+          "type": "add",
+          "n": [
+            15,
+            25,
+            40
+          ],
+          "w": 3
+        },
+        {
+          "type": "mul",
+          "n": [
+            2,
+            3,
+            4
+          ],
+          "w": 3
+        },
+        {
+          "type": "sub",
+          "n": [
+            15,
+            25
+          ],
+          "w": 2
+        }
       ],
       "enemyTable": [
-        { "kind": "grunt", "hp": [50, 80], "w": 1 },
-        { "kind": "elite", "hp": [100, 150], "w": 4 }
+        {
+          "kind": "elite",
+          "hp": [
+            80,
+            120
+          ],
+          "w": 4
+        },
+        {
+          "kind": "boss",
+          "hp": [
+            200,
+            280
+          ],
+          "w": 2
+        }
       ],
-      "boss": { "hp": 350, "label": "终焉门神" }
-    },
-    {
-      "id": 11,
-      "name": "无尽前夜",
-      "tier": "hard",
-      "startPower": 40,
-      "targetDistance": 1000,
-      "baseSpeed": 240,
-      "maxSpeed": 400,
-      "accel": 0.07,
-      "gateGap": 115,
-      "enemyGap": 130,
-      "gateTable": [
-        { "type": "add", "n": [40, 60], "w": 2 },
-        { "type": "mul", "n": [2, 3, 4, 5], "w": 3 },
-        { "type": "sub", "n": [50, 80], "w": 2 },
-        { "type": "div", "n": [2, 3], "w": 1 },
-        { "type": "bomb", "n": [1], "w": 1 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "scoreMul", "n": [1], "w": 2 }
-      ],
-      "enemyTable": [
-        { "kind": "elite", "hp": [120, 180, 220], "w": 5 }
-      ],
-      "boss": { "hp": 450, "label": "暗夜巨像" }
-    },
-    {
-      "id": 12,
-      "name": "门之王庭",
-      "tier": "hard",
-      "startPower": 50,
-      "targetDistance": 1100,
-      "baseSpeed": 250,
-      "maxSpeed": 420,
-      "accel": 0.075,
-      "gateGap": 110,
-      "enemyGap": 125,
-      "gatesPerRow": 3,
-      "gateTable": [
-        { "type": "add", "n": [50, 80], "w": 2 },
-        { "type": "mul", "n": [2, 3, 4, 5], "w": 3 },
-        { "type": "sub", "n": [60, 100], "w": 2 },
-        { "type": "div", "n": [2, 3], "w": 2 },
-        { "type": "bomb", "n": [1], "w": 1 },
-        { "type": "shield", "n": [1], "w": 1 },
-        { "type": "scoreMul", "n": [1], "w": 1 }
-      ],
-      "enemyTable": [
-        { "kind": "elite", "hp": [150, 220, 280], "w": 5 }
-      ],
-      "boss": { "hp": 600, "label": "门之君王" }
+      "pickupBonus": [
+        15,
+        25
+      ]
     }
   ],
   "endless": {
     "id": "endless",
-    "name": "无尽狂奔",
-    "startPower": 15,
-    "baseSpeed": 180,
-    "maxSpeed": 480,
-    "accel": 0.08,
-    "gateGapStart": 160,
-    "gateGapMin": 90,
-    "enemyGapStart": 190,
-    "enemyGapMin": 100,
-    "hpScalePer500": 1.35,
-    "speedBumpPer500": 18,
+    "name": "无尽尸潮",
+    "startWeapon": 5,
+    "baseSpeed": 160,
+    "maxSpeed": 420,
+    "accel": 0.06,
+    "gateGap": 140,
+    "enemyGap": 120,
+    "gateGapStart": 150,
+    "gateGapMin": 95,
+    "enemyGapStart": 160,
+    "enemyGapMin": 90,
+    "speedBumpPer500": 16,
+    "packSize": [
+      8,
+      14
+    ],
+    "pickupBonus": [
+      8,
+      12,
+      15
+    ],
     "gateTable": [
-      { "type": "add", "n": [15, 25, 40, 60], "w": 3 },
-      { "type": "mul", "n": [2, 3, 4], "w": 3 },
-      { "type": "sub", "n": [20, 35, 50], "w": 2 },
-      { "type": "div", "n": [2, 3], "w": 1 },
-      { "type": "bomb", "n": [1], "w": 1 },
-      { "type": "shield", "n": [1], "w": 1 },
-      { "type": "scoreMul", "n": [1], "w": 1 }
+      {
+        "type": "add",
+        "n": [
+          5,
+          8,
+          12,
+          20
+        ],
+        "w": 3
+      },
+      {
+        "type": "mul",
+        "n": [
+          2,
+          3
+        ],
+        "w": 3
+      },
+      {
+        "type": "sub",
+        "n": [
+          5,
+          10,
+          15
+        ],
+        "w": 2
+      },
+      {
+        "type": "pickup",
+        "n": [
+          8,
+          10
+        ],
+        "w": 1
+      }
     ],
     "enemyTable": [
-      { "kind": "grunt", "hp": [20, 40], "w": 2 },
-      { "kind": "elite", "hp": [50, 90], "w": 3 }
-    ],
-    "bossEvery": 800
+      {
+        "kind": "grunt",
+        "hp": [
+          15,
+          30
+        ],
+        "w": 3
+      },
+      {
+        "kind": "elite",
+        "hp": [
+          40,
+          80
+        ],
+        "w": 3
+      },
+      {
+        "kind": "boss",
+        "hp": [
+          120,
+          200
+        ],
+        "w": 1
+      }
+    ]
   }
 }

@@ -1,5 +1,5 @@
 /**
- * DOM UI — modern card menus, HUD, overlays for Number Gate Runner.
+ * DOM UI — weapon/zombie Number Gate menus, HUD, overlays.
  */
 (function (global) {
   'use strict';
@@ -8,7 +8,7 @@
     this.root = root;
     this.handlers = handlers || {};
     this.els = {};
-    this._powerPopTimer = null;
+    this._weaponPopTimer = null;
     this._build();
   }
 
@@ -21,17 +21,17 @@
           '<div class="ng-hud-top">' +
             '<button type="button" class="ng-icon-btn" id="ng-pause" aria-label="暂停">❚❚</button>' +
             '<div class="ng-hud-stats">' +
-              '<div class="ng-stat ng-stat-power"><span class="ng-stat-l">力量</span><span id="hud-power">0</span></div>' +
+              '<div class="ng-stat ng-stat-power"><span class="ng-stat-l">武器</span><span id="hud-weapon">Lv.1</span></div>' +
+              '<div class="ng-stat"><span class="ng-stat-l">火力</span><span id="hud-fire">1</span></div>' +
               '<div class="ng-stat"><span class="ng-stat-l">分数</span><span id="hud-score">0</span></div>' +
-              '<div class="ng-stat"><span class="ng-stat-l">距离</span><span id="hud-dist">0</span></div>' +
-              '<div class="ng-stat"><span class="ng-stat-l">关卡</span><span id="hud-level">1</span></div>' +
+              '<div class="ng-stat"><span class="ng-stat-l">击杀</span><span id="hud-kills">0</span></div>' +
             '</div>' +
             '<button type="button" class="ng-icon-btn" id="ng-mute" aria-label="静音">🔊</button>' +
           '</div>' +
           '<div class="ng-goal" id="ng-goal" hidden><div class="ng-goal-fill" id="ng-goal-fill"></div></div>' +
           '<div class="ng-float-badges">' +
-            '<span id="hud-shield" class="ng-badge" hidden>护盾</span>' +
-            '<span id="hud-mult" class="ng-badge ng-badge-mult" hidden>×</span>' +
+            '<span id="hud-combo" class="ng-badge ng-badge-mult" hidden>连击</span>' +
+            '<span id="hud-dist" class="ng-badge">0m</span>' +
           '</div>' +
         '</div>' +
         '<div class="ng-touch" id="ng-touch" hidden>' +
@@ -41,10 +41,10 @@
         '<div class="ng-overlay" id="ng-menu">' +
           '<div class="ng-card">' +
             '<a class="ng-back" href="../../index.html">← 合集首页</a>' +
-            '<div class="ng-kicker">伪 3D · 广告级手感</div>' +
+            '<div class="ng-kicker">伪 3D · 武器升级 · 清僵尸</div>' +
             '<div class="ng-logo">NUMBER GATE</div>' +
-            '<p class="ng-tagline">自动冲刺，左右撞门。力量暴涨，人数堆起来，把怪物的数字碾过去。</p>' +
-            '<div class="ng-pills"><span>+ 加法</span><span>× 倍率</span><span>护盾</span><span>击飞</span></div>' +
+            '<p class="ng-tagline">自动冲刺撞数字门升级武器，向眼前成群僵尸扫射。被僵尸碰到才会失败。</p>' +
+            '<div class="ng-pills"><span>+ 武器</span><span>× 火力</span><span>射击</span><span>清怪</span></div>' +
             '<div class="ng-menu-actions">' +
               '<button type="button" class="ng-btn ng-btn-primary" id="btn-play">▶ 开始战役</button>' +
               '<button type="button" class="ng-btn" id="btn-endless">∞ 无尽模式</button>' +
@@ -56,7 +56,7 @@
         '<div class="ng-overlay" id="ng-pause-menu" hidden>' +
           '<div class="ng-card">' +
             '<div class="ng-logo sm">暂停</div>' +
-            '<p class="ng-tagline">喘口气，继续冲刺</p>' +
+            '<p class="ng-tagline">喘口气，继续扫射</p>' +
             '<button type="button" class="ng-btn ng-btn-primary" id="btn-resume">继续游戏</button>' +
             '<button type="button" class="ng-btn" id="btn-restart">重开本关</button>' +
             '<button type="button" class="ng-btn" id="btn-to-menu">回主菜单</button>' +
@@ -65,6 +65,7 @@
         '<div class="ng-overlay" id="ng-end" hidden>' +
           '<div class="ng-card">' +
             '<div class="ng-logo sm" id="end-title">通关！</div>' +
+            '<p class="ng-tagline" id="end-reason"></p>' +
             '<div class="ng-end-stats" id="end-stats"></div>' +
             '<button type="button" class="ng-btn ng-btn-primary" id="btn-again">再来一次</button>' +
             '<button type="button" class="ng-btn" id="btn-next" hidden>下一关 →</button>' +
@@ -75,12 +76,12 @@
 
     var ids = [
       'ng-canvas', 'ng-hud', 'ng-touch', 'ng-menu', 'ng-pause-menu', 'ng-end',
-      'hud-score', 'hud-dist', 'hud-level', 'hud-power', 'hud-shield', 'hud-mult',
+      'hud-score', 'hud-dist', 'hud-weapon', 'hud-fire', 'hud-kills', 'hud-combo',
       'ng-goal', 'ng-goal-fill',
       'ng-pause', 'ng-mute', 'btn-left', 'btn-right',
       'btn-play', 'btn-endless', 'level-picker',
       'btn-resume', 'btn-restart', 'btn-to-menu',
-      'end-title', 'end-stats', 'btn-again', 'btn-next', 'btn-end-menu'
+      'end-title', 'end-reason', 'end-stats', 'btn-again', 'btn-next', 'btn-end-menu'
     ];
     for (var i = 0; i < ids.length; i++) {
       this.els[ids[i]] = document.getElementById(ids[i]);
@@ -108,7 +109,7 @@
     this.els['btn-right'].addEventListener('pointerdown', pulse(1));
 
     this.selectedLevel = 1;
-    this._lastPower = 0;
+    this._lastWeapon = 0;
   };
 
   UI.prototype.fillLevels = function (levels) {
@@ -157,53 +158,66 @@
   UI.prototype.showEnd = function (won, state, hasNext) {
     this.els['ng-end'].hidden = false;
     this.els['ng-touch'].hidden = true;
-    this.els['end-title'].textContent = won ? '通关' : '再冲一次';
+    this.els['end-title'].textContent = won ? '通关！' : '被僵尸碰到';
     this.els['end-title'].className = 'ng-logo sm' + (won ? ' win' : ' lose');
+    var reason = '';
+    if (!won && state.failReason === 'zombie_contact') {
+      reason = '死因：僵尸冲到面前碰到了你。升级武器、清出通道再冲！';
+    } else if (won) {
+      reason = '走廊清空，武器等级 ' + state.weaponLevel;
+    }
+    this.els['end-reason'].textContent = reason;
+    var ws = NGCore.weaponStats(state.weaponLevel);
     this.els['end-stats'].innerHTML =
       '<div>分数 <b>' + Math.floor(state.score) + '</b></div>' +
-      '<div>力量 <b>' + Math.floor(state.power) + '</b></div>' +
+      '<div>武器 <b>Lv.' + ws.level + '</b></div>' +
+      '<div>火力 <b>' + ws.firepower + '</b></div>' +
+      '<div>击杀 <b>' + state.kills + '</b></div>' +
       '<div>距离 <b>' + Math.floor(state.distance) + 'm</b></div>' +
-      '<div>最高连击 <b>' + (state._maxCombo || state.combo || 0) + '</b></div>';
+      '<div>最高连击 <b>' + (state.maxCombo || 0) + '</b></div>';
     this.els['btn-next'].hidden = !won || !hasNext;
   };
 
   UI.prototype.updateHUD = function (state) {
-    this.els['hud-score'].textContent = Math.floor(state.score);
-    this.els['hud-dist'].textContent = Math.floor(state.distance) + 'm';
-    this.els['hud-level'].textContent = state.isEndless ? '∞' : String(state.levelId);
-    var powerEl = this.els['hud-power'];
-    var pStr = NGRender.formatNum(state.power);
-    if (state.power !== this._lastPower) {
-      powerEl.textContent = pStr;
-      powerEl.classList.remove('pop');
-      void powerEl.offsetWidth;
-      powerEl.classList.add('pop');
+    var hud = NGCore.getHUD(state);
+    this.els['hud-score'].textContent = hud.score;
+    this.els['hud-kills'].textContent = hud.kills;
+    this.els['hud-dist'].textContent = hud.distance + 'm';
+    this.els['hud-fire'].textContent = hud.firepower + ' (' + hud.pellets + '发)';
+
+    var wEl = this.els['hud-weapon'];
+    var wStr = 'Lv.' + hud.weaponLevel;
+    if (hud.weaponLevel !== this._lastWeapon) {
+      wEl.textContent = wStr;
+      wEl.classList.remove('pop');
+      void wEl.offsetWidth;
+      wEl.classList.add('pop');
       var self = this;
-      clearTimeout(this._powerPopTimer);
-      this._powerPopTimer = setTimeout(function () {
-        powerEl.classList.remove('pop');
+      clearTimeout(this._weaponPopTimer);
+      this._weaponPopTimer = setTimeout(function () {
+        wEl.classList.remove('pop');
       }, 220);
-      this._lastPower = state.power;
+      this._lastWeapon = hud.weaponLevel;
     } else {
-      powerEl.textContent = pStr;
+      wEl.textContent = wStr;
     }
+
     var goal = this.els['ng-goal'];
     var fill = this.els['ng-goal-fill'];
     if (goal && fill) {
-      if (state.isEndless || !state.targetDistance) {
+      if (state.endless || !state.targetDistance) {
         goal.hidden = true;
       } else {
         goal.hidden = false;
-        var pct = Math.max(0, Math.min(100, (state.distance / state.targetDistance) * 100));
-        fill.style.width = pct.toFixed(1) + '%';
+        fill.style.width = (hud.progress * 100).toFixed(1) + '%';
       }
     }
-    this.els['hud-shield'].hidden = !state.shield;
-    if (state.scoreMult > 1) {
-      this.els['hud-mult'].hidden = false;
-      this.els['hud-mult'].textContent = '×' + state.scoreMult.toFixed(1);
+
+    if (hud.combo >= 3) {
+      this.els['hud-combo'].hidden = false;
+      this.els['hud-combo'].textContent = '连击 ×' + hud.combo;
     } else {
-      this.els['hud-mult'].hidden = true;
+      this.els['hud-combo'].hidden = true;
     }
   };
 

@@ -137,6 +137,12 @@
     this._noise(0.25, 0.08, 150);
   };
 
+  AudioEngine.prototype.shoot = function (pellets) {
+    var n = Math.min(3, pellets || 1);
+    this._noise(0.04, 0.05 + n * 0.015, 2200);
+    this._tone(880 + n * 40, 0.04, 'square', 0.035, 420);
+  };
+
   AudioEngine.prototype.ui = function () {
     this._tone(720, 0.05, 'sine', 0.04);
   };

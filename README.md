@@ -7,7 +7,7 @@
 | 游戏 | 路径 | 简介 |
 |------|------|------|
 | **消灭同色方块** | [`games/samegame/`](games/samegame/) | SameGame：连通同色消除、重力与空列压缩、连击与关卡 |
-| **数字门跑酷** | [`games/number-gate/`](games/number-gate/) | Number Gate Runner：三车道选门改写力量、打怪结算、战役+无尽 |
+| **数字门 · 武器僵尸** | [`games/number-gate/`](games/number-gate/) | 伪 3D 走廊撞数字门升级武器，向可见僵尸群扫射；被碰到才死 |
 
 合集首页：[`index.html`](index.html)
 
@@ -29,16 +29,19 @@ npx --yes serve .
 - `games/samegame/index.html`
 - `games/number-gate/index.html`
 
-## 数字门跑酷 · 玩法与控制
+## 数字门 · 玩法与控制（v2）
 
-- **自动前进**，用左右选择车道撞入数字门（`+N` / `×N` / `-N` / `÷N` / 炸弹 / 护盾 / 分数倍率）
-- **力量**决定能否击杀前方怪物；护盾可挡一次伤害或炸弹
-- **战役** 12 关 + **无尽** 模式
+- **自动前进**，左右换道撞入数字门（`+N` / `×N` / `-N`）与武器拾取台 → **升级武器**（等级 / 弹道 / 射速 / 伤害）
+- 前方与侧前方有 **大量可见僵尸**；玩家 **自动射击** 清怪
+- **失败唯一条件：** 僵尸冲到面前碰到玩家（禁止看不见就死）
+- **战役** 8 关 + **无尽** 尸潮
 
 控制：
 
 - 键盘：`←` / `A` 左，`→` / `D` 右，`P` / `Esc` 暂停，空格开始
 - 触控：左右滑动，或点屏幕两侧圆形按钮
+
+设计文档：`docs-number-gate-weapon-zombie-GDD.md`
 
 ## 部署
 
@@ -57,16 +60,7 @@ node games/samegame/tests/core-test.js
 
 ## 视觉
 
-数字门是宽舞台伪 3D：透视走廊、霓虹路沿、冲向镜头的箭头、立体大门和随力量变多的小人队伍。撞门数字飞向队伍，击杀有击飞和震屏。SameGame 用糖果高光方块、碎片粒子和连击大字。首页是商店式落地页。逻辑在 `core.js`，表现层在 `render.js` / `particles.js` / `ui.js`。零构建。
-
-## 设计文档（仓库外副本）
-
-开发阶段文档可能位于工作区：
-
-- `number-gate-phase1-research.md`
-- `number-gate-GDD.md`
-
-本仓库内已包含可玩实现与 `games/number-gate/data/levels.json`。
+数字门：强透视伪 3D 走廊、霓虹路沿、数字门、武器拾取台、成群僵尸与可见弹道。SameGame：糖果高光方块、碎片粒子与连击大字。逻辑在 `core.js`，表现层在 `render.js` / `particles.js` / `ui.js`。零构建。
 
 ## License
 

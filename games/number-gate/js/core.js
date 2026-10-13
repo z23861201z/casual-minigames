@@ -1,12 +1,14 @@
 /**
- * Number Gate Runner — pure game logic (no DOM/Canvas).
- * Exposes global NGCore for browser and Node tests.
+ * Number Gate — Weapon Upgrade × Zombie Shooter core (no DOM/Canvas).
+ * Gates upgrade weaponLevel; player auto-shoots; contact with zombies = death.
+ * Global: NGCore
  */
 (function (global) {
   'use strict';
 
-  var POSITIVE = { add: 1, mul: 1, shield: 1, scoreMul: 1 };
-  var NEGATIVE = { sub: 1, div: 1, bomb: 1 };
+  var POSITIVE = { add: 1, mul: 1, pickup: 1 };
+  var MAX_WEAPON = 999;
+  var MAX_PELLETS = 5;
 
   function clamp(v, a, b) {
     return Math.max(a, Math.min(b, v));
@@ -46,506 +48,623 @@
       case 'add': return '+' + n;
       case 'mul': return '×' + n;
       case 'sub': return '-' + n;
-      case 'div': return '÷' + n;
-      case 'bomb': return 'BOMB';
-      case 'shield': return 'SHIELD';
-      case 'scoreMul': return 'SCORE+';
+      case 'pickup': return 'GUN +' + n;
       default: return String(type);
     }
   }
 
+  /** Derive combat stats from weapon level. */
+  function weaponStats(level) {
+    var lv = clamp(level | 0, 1, MAX_WEAPON);
+    return {
+      level: lv,
+      damage: lv,
+      pellets: clamp(1 + Math.floor((lv - 1) / 4), 1, MAX_PELLETS),
+      fireInterval: Math.max(70, 300 - lv * 10),
+      firepower: lv * clamp(1 + Math.floor((lv - 1) / 4), 1, MAX_PELLETS)
+    };
+  }
+
   /**
-   * Apply a gate operation to player state.
-   * @returns {{ power, shield, scoreMult, delta, text, kind }}
+   * Apply gate → weaponLevel change.
+   * @returns {{ weaponLevel, delta, text, kind }}
    */
-  function applyGate(state, gate, defaults) {
-    var power = state.power;
-    var shield = !!state.shield;
-    var scoreMult = state.scoreMult || 1;
-    var maxMult = (defaults && defaults.maxScoreMult) || 4;
-    var minP = (defaults && defaults.minPower) || 1;
-    var delta = 0;
+  function applyGate(state, gate) {
+    var before = state.weaponLevel;
+    var lv = before;
     var text = gateLabel(gate.type, gate.n);
     var kind = gate.type;
-    var before = power;
 
     switch (gate.type) {
       case 'add':
-        power = power + gate.n;
-        delta = power - before;
+      case 'pickup':
+        lv = clamp(lv + gate.n, 1, MAX_WEAPON);
         break;
       case 'mul':
-        power = power * gate.n;
-        delta = power - before;
+        lv = clamp(lv * Math.max(1, gate.n), 1, MAX_WEAPON);
         break;
       case 'sub':
-        power = Math.max(minP, power - gate.n);
-        delta = power - before;
-        break;
-      case 'div':
-        power = Math.max(minP, Math.floor(power / Math.max(1, gate.n)));
-        delta = power - before;
-        break;
-      case 'bomb':
-        if (shield) {
-          shield = false;
-          text = 'SHIELD!';
-          kind = 'shieldBreak';
-          delta = 0;
-        } else {
-          power = Math.max(minP, Math.floor(power * 0.5));
-          delta = power - before;
-        }
-        break;
-      case 'shield':
-        shield = true;
-        delta = 0;
-        break;
-      case 'scoreMul':
-        scoreMult = Math.min(maxMult, scoreMult + 0.5);
-        delta = 0;
-        text = '×' + scoreMult.toFixed(1);
+        lv = clamp(lv - gate.n, 1, MAX_WEAPON);
         break;
       default:
         break;
     }
 
     return {
-      power: power,
-      shield: shield,
-      scoreMult: scoreMult,
-      delta: delta,
+      weaponLevel: lv,
+      delta: lv - before,
       text: text,
-      kind: kind,
-      before: before
+      kind: kind
     };
   }
 
-  /**
-   * Combat resolution.
-   * @returns {{ killed, power, shield, scoreGain, combo, outcome }}
-   */
-  function resolveCombat(state, enemy, defaults) {
-    var power = state.power;
-    var shield = !!state.shield;
-    var scoreMult = state.scoreMult || 1;
-    var combo = state.combo || 0;
-    var hp = enemy.hp;
-
-    if (power >= hp) {
-      var factor = 1 + combo * 0.1;
-      var scoreGain = Math.floor(hp * scoreMult * factor);
-      return {
-        killed: true,
-        power: power,
-        shield: shield,
-        scoreGain: scoreGain,
-        combo: combo + 1,
-        outcome: 'kill',
-        damage: 0
-      };
-    }
-
-    if (shield) {
-      return {
-        killed: false,
-        power: power,
-        shield: false,
-        scoreGain: 0,
-        combo: 0,
-        outcome: 'blocked',
-        damage: 0
-      };
-    }
-
-    var damage = hp;
-    var newPower = Math.max(0, power - damage);
-    return {
-      killed: false,
-      power: newPower,
-      shield: false,
-      scoreGain: 0,
-      combo: 0,
-      outcome: newPower <= 0 ? 'dead' : 'hurt',
-      damage: damage
-    };
-  }
-
-  function makeGate(type, n, lane, z, id) {
-    return {
-      id: id,
-      kind: 'gate',
-      type: type,
-      n: n || 1,
-      lane: lane,
-      z: z,
-      consumed: false,
-      label: gateLabel(type, n)
-    };
-  }
-
-  function makeEnemy(kind, hp, lane, z, id, label) {
-    return {
-      id: id,
-      kind: 'enemy',
-      enemyKind: kind,
-      hp: hp,
-      lane: lane,
-      z: z,
-      consumed: false,
-      dead: false,
-      label: label || null
-    };
-  }
-
-  function ensurePositiveGate(gates, table, rnd, lanePrefer) {
-    var hasPos = gates.some(function (g) { return POSITIVE[g.type]; });
-    if (hasPos) return gates;
-    var posEntries = table.filter(function (t) { return POSITIVE[t.type]; });
-    if (!posEntries.length) {
-      posEntries = [{ type: 'add', n: [10], w: 1 }];
-    }
-    var entry = pickWeighted(posEntries, rnd);
-    var n = pickN(entry.n, rnd);
-    var lane = lanePrefer != null ? lanePrefer : gates[0].lane;
-    // replace first negative
-    for (var i = 0; i < gates.length; i++) {
-      if (NEGATIVE[gates[i].type]) {
-        gates[i] = makeGate(entry.type, n, gates[i].lane, gates[i].z, gates[i].id);
-        return gates;
-      }
-    }
-    gates[0] = makeGate(entry.type, n, lane, gates[0].z, gates[0].id);
-    return gates;
-  }
-
-  /**
-   * Spawn a row of gates across lanes.
-   */
-  function spawnGateRow(cfg, z, idGen, rnd) {
-    var lanes = cfg.lanes || 3;
-    var count = cfg.gatesPerRow || 2;
-    if (count > lanes) count = lanes;
-    var table = cfg.gateTable;
-    var laneOrder = [];
-    for (var i = 0; i < lanes; i++) laneOrder.push(i);
-    // shuffle
-    for (var s = laneOrder.length - 1; s > 0; s--) {
-      var j = Math.floor(rnd() * (s + 1));
-      var tmp = laneOrder[s];
-      laneOrder[s] = laneOrder[j];
-      laneOrder[j] = tmp;
-    }
-    var chosenLanes = laneOrder.slice(0, count).sort();
-    var gates = [];
-    for (var k = 0; k < chosenLanes.length; k++) {
-      var entry = pickWeighted(table, rnd);
-      var n = pickN(entry.n, rnd);
-      gates.push(makeGate(entry.type, n, chosenLanes[k], z, idGen()));
-    }
-    return ensurePositiveGate(gates, table, rnd, chosenLanes[0]);
-  }
-
-  function spawnEnemy(cfg, z, idGen, rnd, hpScale) {
-    var entry = pickWeighted(cfg.enemyTable, rnd);
-    var hp = pickN(entry.hp, rnd);
-    if (hpScale) hp = Math.max(1, Math.floor(hp * hpScale));
-    var lane = Math.floor(rnd() * (cfg.lanes || 3));
-    return makeEnemy(entry.kind, hp, lane, z, idGen());
-  }
-
-  function spawnBoss(cfg, z, idGen) {
-    var b = cfg.boss;
-    return makeEnemy('boss', b.hp, 1, z, idGen(), b.label || 'BOSS');
-  }
-
-  /**
-   * Create initial run state.
-   */
-  function createState(levelCfg, defaults, seed) {
-    var rnd = mulberry32(seed == null ? (Date.now() & 0xffffffff) : seed);
-    var id = 1;
-    function idGen() { return id++; }
-
-    var isEndless = !!(levelCfg && levelCfg.id === 'endless');
-    var state = {
-      status: 'playing',
-      levelId: levelCfg.id,
-      levelName: levelCfg.name,
-      isEndless: isEndless,
-      power: levelCfg.startPower,
-      shield: false,
-      score: 0,
-      scoreMult: 1,
-      combo: 0,
-      comboTimer: 0,
-      distance: 0,
-      speed: levelCfg.baseSpeed,
-      baseSpeed: levelCfg.baseSpeed,
-      maxSpeed: levelCfg.maxSpeed,
-      accel: levelCfg.accel || 0.03,
-      lane: 1,
-      targetLane: 1,
-      laneT: 1,
-      lanes: defaults.lanes || 3,
-      laneChangeMs: defaults.laneChangeMs || 120,
-      playerZ: defaults.playerZ || 0.78,
-      hitBand: defaults.hitBand || 0.06,
-      minPower: defaults.minPower || 1,
-      maxScoreMult: defaults.maxScoreMult || 4,
-      comboWindowMs: defaults.comboWindowMs || 2500,
-      entities: [],
-      nextGateAt: 120,
-      nextEnemyAt: 200,
-      bossSpawned: false,
-      targetDistance: levelCfg.targetDistance || 0,
-      gateGap: levelCfg.gateGap || levelCfg.gateGapStart || 160,
-      enemyGap: levelCfg.enemyGap || levelCfg.enemyGapStart || 190,
-      levelCfg: levelCfg,
-      defaults: defaults,
-      rnd: rnd,
-      idGen: idGen,
-      seed: seed,
-      shake: 0,
-      events: [],
-      time: 0,
-      won: false,
-      hpScale: 1,
-      segment: 0
-    };
-    return state;
-  }
-
-  function effectiveLane(state) {
-    if (state.laneT < 1) {
-      return state.laneT < 0.5 ? state.lane : state.targetLane;
-    }
-    return state.lane;
-  }
-
-  function setLaneTarget(state, dir) {
-    // dir: -1 left, +1 right
-    var next = clamp(state.targetLane + dir, 0, state.lanes - 1);
-    if (next === state.targetLane && state.laneT >= 1) return false;
-    if (next === state.targetLane) return false;
-    state.lane = state.targetLane;
-    state.targetLane = next;
-    state.laneT = 0;
-    return true;
-  }
-
-  function pushEvent(state, ev) {
-    state.events.push(ev);
-  }
-
-  /**
-   * Advance simulation by dt seconds.
-   */
-  function step(state, dt, input) {
-    state.events = [];
-    if (state.status !== 'playing') return state;
-
-    state.time += dt;
-
-    // Lane transition
-    if (state.laneT < 1) {
-      state.laneT = Math.min(1, state.laneT + (dt * 1000) / state.laneChangeMs);
-      if (state.laneT >= 1) state.lane = state.targetLane;
-    }
-
-    if (input) {
-      if (input.left) setLaneTarget(state, -1);
-      if (input.right) setLaneTarget(state, 1);
-    }
-
-    // Speed & distance
-    var cfg = state.levelCfg;
-    if (state.isEndless) {
-      var seg = Math.floor(state.distance / 500);
-      if (seg !== state.segment) {
-        state.segment = seg;
-        state.hpScale = Math.pow(cfg.hpScalePer500 || 1.35, seg);
-        state.speed = Math.min(state.maxSpeed, state.baseSpeed + seg * (cfg.speedBumpPer500 || 18));
-        state.gateGap = Math.max(cfg.gateGapMin || 90, (cfg.gateGapStart || 160) - seg * 8);
-        state.enemyGap = Math.max(cfg.enemyGapMin || 100, (cfg.enemyGapStart || 190) - seg * 10);
-      }
-      state.speed = Math.min(state.maxSpeed, state.speed + state.accel * dt * 60);
-    } else {
-      state.speed = Math.min(state.maxSpeed, state.speed + state.accel * dt * 60);
-    }
-
-    state.distance += state.speed * dt;
-
-    // Combo timer
-    if (state.combo > 0) {
-      state.comboTimer -= dt * 1000;
-      if (state.comboTimer <= 0) {
-        state.combo = 0;
-        state.comboTimer = 0;
-      }
-    }
-
-    // Shake decay
-    if (state.shake > 0) state.shake = Math.max(0, state.shake - dt * 4);
-
-    // Spawn gates / enemies (distance-based, entities store absolute z = distance offset ahead)
-    // We use "worldZ" as absolute distance marker; player is at state.distance.
-    // Entity.z is absolute world position ahead.
-    while (state.nextGateAt < state.distance + 900) {
-      var gz = state.nextGateAt;
-      var row = spawnGateRow(cfg, gz, state.idGen, state.rnd);
-      for (var gi = 0; gi < row.length; gi++) state.entities.push(row[gi]);
-      state.nextGateAt += state.gateGap + Math.floor(state.rnd() * 40);
-    }
-
-    while (state.nextEnemyAt < state.distance + 900) {
-      // Avoid overlapping gate rows closely
-      if (Math.abs(state.nextEnemyAt - state.nextGateAt) < 40) {
-        state.nextEnemyAt += 50;
-        continue;
-      }
-      var ez = state.nextEnemyAt;
-      if (!state.isEndless && cfg.boss && !state.bossSpawned && ez >= state.targetDistance) {
+  function ensurePositiveGate(row, table, rnd) {
+    var hasPos = false;
+    for (var i = 0; i < row.length; i++) {
+      if (POSITIVE[row[i].type]) {
+        hasPos = true;
         break;
       }
-      if (state.isEndless && cfg.bossEvery && Math.floor(ez / cfg.bossEvery) > Math.floor((ez - state.enemyGap) / cfg.bossEvery)) {
-        var boss = makeEnemy('boss', Math.floor(200 * state.hpScale), 1, ez, state.idGen(), 'ELITE BOSS');
-        state.entities.push(boss);
-      } else {
-        state.entities.push(spawnEnemy(cfg, ez, state.idGen, state.rnd, state.hpScale));
-      }
-      state.nextEnemyAt += state.enemyGap + Math.floor(state.rnd() * 50);
     }
-
-    // Campaign boss
-    if (!state.isEndless && cfg.boss && !state.bossSpawned && state.distance >= state.targetDistance - 80) {
-      state.entities.push(spawnBoss(cfg, state.targetDistance + 40, state.idGen));
-      state.bossSpawned = true;
-      pushEvent(state, { type: 'boss' });
+    if (hasPos) return row;
+    var posTable = [];
+    for (var j = 0; j < table.length; j++) {
+      if (POSITIVE[table[j].type]) posTable.push(table[j]);
     }
-
-    // Move relative depth: entity depth = entity.z - distance (0 = at player feet zone conceptually inverted)
-    // Hit when entity.z enters [distance, distance + hitBand*view] — use absolute:
-    // When entity.z - distance <= nearHit (player catches up)
-    var hitNear = 5;
-    var hitFar = 25;
-    var elane = effectiveLane(state);
-
-    for (var i = 0; i < state.entities.length; i++) {
-      var e = state.entities[i];
-      if (e.consumed || e.dead) continue;
-      var rel = e.z - state.distance;
-      if (rel > hitFar) continue;
-      if (rel < -30) {
-        e.consumed = true;
-        continue;
-      }
-      if (rel <= hitFar && rel >= -5 && e.lane === elane) {
-        if (e.kind === 'gate') {
-          var gres = applyGate(state, e, state.defaults);
-          state.power = gres.power;
-          state.shield = gres.shield;
-          state.scoreMult = gres.scoreMult;
-          e.consumed = true;
-          state.shake = Math.max(state.shake, 0.25);
-          pushEvent(state, {
-            type: 'gate',
-            gate: e,
-            result: gres,
-            xLane: e.lane
-          });
-          // small score for hitting positive gates
-          if (POSITIVE[e.type] && e.type !== 'shield') {
-            state.score += Math.max(1, Math.floor(Math.abs(gres.delta) * 0.1 * state.scoreMult));
-          }
-        } else if (e.kind === 'enemy') {
-          var cres = resolveCombat(state, e, state.defaults);
-          state.power = cres.power;
-          state.shield = cres.shield;
-          state.combo = cres.combo;
-          if (cres.combo > 0) state.comboTimer = state.comboWindowMs;
-          state.score += cres.scoreGain;
-          if (cres.killed) {
-            e.dead = true;
-            e.consumed = true;
-            state.shake = Math.max(state.shake, e.enemyKind === 'boss' ? 0.9 : e.enemyKind === 'elite' ? 0.55 : 0.35);
-            pushEvent(state, { type: 'kill', enemy: e, result: cres, xLane: e.lane });
-            if (e.enemyKind === 'boss' && !state.isEndless) {
-              state.status = 'won';
-              state.won = true;
-              state.score += 500;
-              pushEvent(state, { type: 'win' });
-            }
-          } else {
-            e.consumed = true; // contact resolved
-            state.shake = Math.max(state.shake, 0.7);
-            pushEvent(state, { type: 'combat', enemy: e, result: cres, xLane: e.lane });
-            if (cres.outcome === 'dead') {
-              state.status = 'lost';
-              pushEvent(state, { type: 'lose' });
-            }
-          }
-        }
-      }
+    if (!posTable.length) {
+      row[0] = { type: 'add', n: 1, lane: row[0].lane };
+      return row;
     }
+    var pick = pickWeighted(posTable, rnd);
+    var n = Array.isArray(pick.n) ? pickN(pick.n, rnd) : pick.n;
+    row[0] = { type: pick.type, n: n, lane: row[0].lane };
+    return row;
+  }
 
-    // Passive score from distance
-    state.score += state.speed * dt * 0.05 * state.scoreMult;
-
-    // Prune far-behind entities
-    state.entities = state.entities.filter(function (ent) {
-      return (ent.z - state.distance) > -80 && !((ent.consumed || ent.dead) && (ent.z - state.distance) < -20);
-    });
-
-    // Endless: never auto-win; campaign without boss kill past distance+grace still running until boss handled
-    if (!state.isEndless && state.bossSpawned && state.status === 'playing') {
-      var bossAlive = state.entities.some(function (ent) {
-        return ent.enemyKind === 'boss' && !ent.dead && !ent.consumed;
+  function makeGateRow(cfg, distance, rnd, lanes) {
+    var table = cfg.gateTable || [
+      { type: 'add', n: [1, 3, 5, 8], w: 4 },
+      { type: 'mul', n: [2], w: 1 },
+      { type: 'sub', n: [2, 3], w: 1 }
+    ];
+    var count = cfg.gatesPerRow || 2;
+    count = clamp(count, 2, lanes);
+    var used = {};
+    var row = [];
+    for (var i = 0; i < count; i++) {
+      var lane;
+      do {
+        lane = Math.floor(rnd() * lanes);
+      } while (used[lane] && Object.keys(used).length < lanes);
+      used[lane] = 1;
+      var ent = pickWeighted(table, rnd);
+      var n = Array.isArray(ent.n) ? pickN(ent.n, rnd) : ent.n;
+      row.push({
+        id: 'g' + distance + '_' + i + '_' + lane,
+        type: ent.type,
+        n: n,
+        lane: lane,
+        z: distance,
+        hit: false
       });
-      // if boss went off-screen without kill — lose
-      if (!bossAlive) {
-        var anyBoss = state.entities.some(function (ent) { return ent.enemyKind === 'boss'; });
-        // boss was consumed without dead? check events — if we passed target+200 and no win
-        if (state.distance > state.targetDistance + 200 && state.status === 'playing') {
-          // Look if boss was killed earlier — won flag
-          if (!state.won) {
-            // Boss missed (wrong lane) — lose
-            state.status = 'lost';
-            pushEvent(state, { type: 'lose', reason: 'boss_missed' });
-          }
-        }
-      }
     }
+    return ensurePositiveGate(row, table, rnd);
+  }
+
+  function makePickup(cfg, distance, lane, rnd) {
+    var bonus = cfg.pickupBonus || [5, 8, 10];
+    var n = Array.isArray(bonus) ? pickN(bonus, rnd) : bonus;
+    return {
+      id: 'p' + distance + '_' + lane,
+      type: 'pickup',
+      n: n,
+      lane: lane,
+      z: distance,
+      hit: false,
+      kind: rnd() < 0.5 ? 'chainsaw' : 'cannon'
+    };
+  }
+
+  function makeZombiePack(cfg, distance, rnd, lanes) {
+    var table = cfg.enemyTable || [
+      { kind: 'grunt', hp: [8, 12, 16], w: 5 }
+    ];
+    var packSize = cfg.packSize || [4, 7];
+    var minN = Array.isArray(packSize) ? packSize[0] : 4;
+    var maxN = Array.isArray(packSize) ? packSize[1] : 7;
+    var count = minN + Math.floor(rnd() * (maxN - minN + 1));
+    var zombies = [];
+    for (var i = 0; i < count; i++) {
+      var ent = pickWeighted(table, rnd);
+      var hp = Array.isArray(ent.hp) ? pickN(ent.hp, rnd) : ent.hp;
+      // Mix: on-lane blockers + side-front horde (offset lane for visibility)
+      var onLane = rnd() < 0.55;
+      var lane = Math.floor(rnd() * lanes);
+      var side = onLane ? 0 : (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * 1.2);
+      var zJitter = rnd() * 40;
+      zombies.push({
+        id: 'z' + distance + '_' + i,
+        kind: ent.kind || 'grunt',
+        hp: hp,
+        maxHp: hp,
+        lane: lane,
+        laneOffset: side,
+        z: distance + zJitter,
+        alive: true,
+        approach: 12 + rnd() * 16,
+        radius: ent.kind === 'boss' ? 0.55 : ent.kind === 'elite' ? 0.42 : 0.36,
+        scale: ent.kind === 'boss' ? 1.6 : ent.kind === 'elite' ? 1.25 : 1
+      });
+    }
+    return zombies;
+  }
+
+  function createState(cfg, defaults, seed) {
+    defaults = defaults || {};
+    var lanes = defaults.lanes || 3;
+    var rnd = mulberry32(seed == null ? 1 : seed);
+    var startLv = cfg.startWeapon != null ? cfg.startWeapon : (cfg.startPower != null ? Math.max(1, Math.floor(cfg.startPower / 3)) : 3);
+
+    var state = {
+      status: 'running',
+      failReason: null,
+      lanes: lanes,
+      lane: 1,
+      laneVisual: 1,
+      laneChangeMs: defaults.laneChangeMs || 120,
+      laneT: 1,
+      weaponLevel: startLv,
+      score: 0,
+      kills: 0,
+      distance: 0,
+      targetDistance: cfg.targetDistance || 0,
+      speed: cfg.baseSpeed || 160,
+      baseSpeed: cfg.baseSpeed || 160,
+      maxSpeed: cfg.maxSpeed || 280,
+      accel: cfg.accel || 0.03,
+      shake: 0,
+      flash: 0,
+      time: 0,
+      fireCd: 0,
+      seed: seed,
+      rnd: rnd,
+      cfg: cfg,
+      defaults: defaults,
+      gates: [],
+      pickups: [],
+      zombies: [],
+      bullets: [],
+      nextGateAt: 120,
+      nextPackAt: 200,
+      nextPickupAt: 280,
+      gateGap: cfg.gateGap || 160,
+      enemyGap: cfg.enemyGap || 180,
+      playerHitZ: 8,
+      bulletSpeed: 520,
+      combo: 0,
+      maxCombo: 0,
+      endless: cfg.id === 'endless',
+      levelId: cfg.id,
+      levelName: cfg.name || '',
+      _events: []
+    };
+
+    // Seed first content so player sees gates + zombies immediately
+    spawnGateRow(state, 140);
+    spawnPack(state, 220);
+    spawnPack(state, 260);
+    spawnGateRow(state, 320);
+    spawnPickupRow(state, 380);
+    spawnPack(state, 420);
+    state.nextGateAt = 480;
+    state.nextPackAt = 500;
+    state.nextPickupAt = 620;
 
     return state;
   }
 
-  // Predict power after a gate (for UI hints / tests)
-  function previewGate(power, shield, scoreMult, gate, defaults) {
-    return applyGate({ power: power, shield: shield, scoreMult: scoreMult }, gate, defaults);
+  function spawnGateRow(state, z) {
+    var row = makeGateRow(state.cfg, z, state.rnd, state.lanes);
+    for (var i = 0; i < row.length; i++) state.gates.push(row[i]);
   }
 
-  var API = {
-    applyGate: applyGate,
-    resolveCombat: resolveCombat,
-    spawnGateRow: spawnGateRow,
-    spawnEnemy: spawnEnemy,
-    spawnBoss: spawnBoss,
-    createState: createState,
-    step: step,
-    setLaneTarget: setLaneTarget,
-    effectiveLane: effectiveLane,
-    gateLabel: gateLabel,
-    previewGate: previewGate,
+  function spawnPack(state, z) {
+    var pack = makeZombiePack(state.cfg, z, state.rnd, state.lanes);
+    for (var i = 0; i < pack.length; i++) state.zombies.push(pack[i]);
+  }
+
+  function spawnPickupRow(state, z) {
+    var lanes = state.lanes;
+    var count = 1 + (state.rnd() < 0.45 ? 1 : 0);
+    var used = {};
+    for (var i = 0; i < count; i++) {
+      var lane;
+      do {
+        lane = Math.floor(state.rnd() * lanes);
+      } while (used[lane]);
+      used[lane] = 1;
+      state.pickups.push(makePickup(state.cfg, z, lane, state.rnd));
+    }
+  }
+
+  function requestLane(state, dir) {
+    if (state.status !== 'running') return;
+    var next = clamp(state.lane + dir, 0, state.lanes - 1);
+    if (next === state.lane) return;
+    state.lane = next;
+    state.laneT = 0;
+  }
+
+  function updateLaneVisual(state, dt) {
+    var ms = state.laneChangeMs || 120;
+    state.laneT = clamp(state.laneT + dt / ms, 0, 1);
+    var t = state.laneT;
+    t = t * t * (3 - 2 * t);
+    state.laneVisual = lerp(state.laneVisual, state.lane, t < 1 ? 0.35 + t * 0.65 : 1);
+    if (Math.abs(state.laneVisual - state.lane) < 0.01) state.laneVisual = state.lane;
+  }
+
+  function tryFire(state) {
+    if (state.fireCd > 0) return;
+    var stats = weaponStats(state.weaponLevel);
+    state.fireCd = stats.fireInterval;
+
+    var pellets = stats.pellets;
+    var baseLane = state.laneVisual;
+    for (var i = 0; i < pellets; i++) {
+      var spread = pellets === 1 ? 0 : (i / (pellets - 1) - 0.5) * 0.55;
+      state.bullets.push({
+        id: 'b' + state.time + '_' + i,
+        lane: baseLane + spread,
+        z: state.playerHitZ + 2,
+        damage: stats.damage,
+        alive: true,
+        life: 1.2
+      });
+    }
+    state._events.push({ type: 'shoot', pellets: pellets, level: stats.level });
+  }
+
+  function updateBullets(state, dt) {
+    var speed = state.bulletSpeed;
+    var dz = speed * (dt / 1000);
+    for (var i = state.bullets.length - 1; i >= 0; i--) {
+      var b = state.bullets[i];
+      if (!b.alive) {
+        state.bullets.splice(i, 1);
+        continue;
+      }
+      b.z += dz;
+      b.life -= dt / 1000;
+      if (b.life <= 0 || b.z > state.distance + 900) {
+        b.alive = false;
+        state.bullets.splice(i, 1);
+        continue;
+      }
+      // Hit test vs zombies
+      for (var j = 0; j < state.zombies.length; j++) {
+        var z = state.zombies[j];
+        if (!z.alive) continue;
+        var zLane = z.lane + (z.laneOffset || 0);
+        if (Math.abs(b.lane - zLane) > 0.7) continue;
+        if (Math.abs(b.z - (z.z - state.distance)) > 18) continue;
+        // hit
+        z.hp -= b.damage;
+        b.alive = false;
+        state.bullets.splice(i, 1);
+        state._events.push({
+          type: 'hit',
+          zombie: z,
+          damage: b.damage,
+          lane: zLane,
+          worldZ: z.z
+        });
+        if (z.hp <= 0) {
+          z.alive = false;
+          z.hp = 0;
+          state.kills++;
+          state.combo++;
+          if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+          var pts = Math.floor(z.maxHp * (1 + state.combo * 0.08));
+          state.score += pts;
+          state._events.push({
+            type: 'kill',
+            zombie: z,
+            points: pts,
+            lane: zLane,
+            worldZ: z.z
+          });
+          state.shake = Math.max(state.shake, z.kind === 'boss' ? 1.2 : z.kind === 'elite' ? 0.7 : 0.35);
+        }
+        break;
+      }
+    }
+  }
+
+  function updateZombies(state, dt) {
+    var playerWorldZ = state.distance;
+    for (var i = state.zombies.length - 1; i >= 0; i--) {
+      var z = state.zombies[i];
+      if (!z.alive) {
+        // keep corpses briefly via render; prune far dead
+        if (z.z < playerWorldZ - 40) state.zombies.splice(i, 1);
+        continue;
+      }
+      // Approach player: reduce world z toward player
+      z.z -= z.approach * (dt / 1000);
+      var rel = z.z - playerWorldZ;
+      if (rel < -30) {
+        state.zombies.splice(i, 1);
+        continue;
+      }
+      // Contact death — only when zombie is in front/at player and visible band
+      if (rel <= state.playerHitZ + 4 && rel >= -2) {
+        var zLane = z.lane + (z.laneOffset || 0);
+        var laneDist = Math.abs(zLane - state.laneVisual);
+        var touchR = (z.radius || 0.36) + 0.25;
+        if (laneDist < touchR) {
+          state.status = 'lost';
+          state.failReason = 'zombie_contact';
+          state._events.push({
+            type: 'death',
+            reason: 'zombie_contact',
+            zombie: z,
+            lane: zLane,
+            worldZ: z.z
+          });
+          return;
+        }
+      }
+    }
+  }
+
+  function updateGatesAndPickups(state) {
+    var playerZ = state.distance;
+    var hitBand = 12;
+
+    function checkList(list, isPickup) {
+      for (var i = 0; i < list.length; i++) {
+        var g = list[i];
+        if (g.hit) continue;
+        var rel = g.z - playerZ;
+        if (rel < -20) {
+          g.hit = true;
+          continue;
+        }
+        if (rel <= hitBand && rel >= -2) {
+          if (Math.abs(g.lane - state.lane) < 0.5) {
+            g.hit = true;
+            var result = applyGate(state, g);
+            state.weaponLevel = result.weaponLevel;
+            state._events.push({
+              type: isPickup ? 'pickup' : 'gate',
+              gate: g,
+              result: result
+            });
+            if (result.delta > 0) {
+              state.shake = Math.max(state.shake, g.type === 'mul' ? 0.9 : 0.45);
+              state.flash = Math.max(state.flash, 0.2);
+            } else if (result.delta < 0) {
+              state.shake = Math.max(state.shake, 0.55);
+            }
+          }
+        }
+      }
+    }
+
+    checkList(state.gates, false);
+    checkList(state.pickups, true);
+  }
+
+  function spawnAhead(state) {
+    var cfg = state.cfg;
+    while (state.nextGateAt < state.distance + 700) {
+      spawnGateRow(state, state.nextGateAt);
+      var gap = state.gateGap;
+      if (state.endless) {
+        gap = Math.max(cfg.gateGapMin || 90, (cfg.gateGapStart || 160) - state.distance * 0.02);
+      }
+      state.nextGateAt += gap;
+    }
+    while (state.nextPackAt < state.distance + 750) {
+      spawnPack(state, state.nextPackAt);
+      // denser visible packs
+      if (state.rnd() < 0.5) spawnPack(state, state.nextPackAt + 35);
+      var egap = state.enemyGap;
+      if (state.endless) {
+        egap = Math.max(cfg.enemyGapMin || 100, (cfg.enemyGapStart || 190) - state.distance * 0.025);
+      }
+      state.nextPackAt += egap;
+    }
+    while (state.nextPickupAt < state.distance + 700) {
+      spawnPickupRow(state, state.nextPickupAt);
+      state.nextPickupAt += 220 + state.rnd() * 160;
+    }
+  }
+
+  function pruneFar(state) {
+    var minZ = state.distance - 50;
+    state.gates = state.gates.filter(function (g) {
+      return g.z > minZ && !g.hit;
+    });
+    state.pickups = state.pickups.filter(function (g) {
+      return g.z > minZ && !g.hit;
+    });
+  }
+
+  /**
+   * Advance simulation by dt ms.
+   * @returns {Array} events this tick
+   */
+  function step(state, dt, input) {
+    state._events = [];
+    if (state.status !== 'running') return state._events;
+
+    dt = clamp(dt, 0, 50);
+    state.time += dt;
+
+    if (input) {
+      if (input.left) requestLane(state, -1);
+      if (input.right) requestLane(state, 1);
+    }
+    updateLaneVisual(state, dt);
+
+    // Speed ramp
+    state.speed = clamp(state.speed + state.accel * dt, state.baseSpeed, state.maxSpeed);
+    if (state.endless) {
+      var bumps = Math.floor(state.distance / 500);
+      var bump = (state.cfg.speedBumpPer500 || 15) * bumps;
+      state.speed = clamp(state.baseSpeed + bump + state.accel * state.time * 0.02, state.baseSpeed, state.maxSpeed);
+    }
+
+    state.distance += state.speed * (dt / 1000);
+
+    if (state.shake > 0) state.shake = Math.max(0, state.shake - dt / 180);
+    if (state.flash > 0) state.flash = Math.max(0, state.flash - dt / 400);
+
+    spawnAhead(state);
+    updateGatesAndPickups(state);
+
+    state.fireCd = Math.max(0, state.fireCd - dt);
+    // Auto-fire when any zombie is ahead in engagement range
+    var hasTarget = false;
+    for (var i = 0; i < state.zombies.length; i++) {
+      var z = state.zombies[i];
+      if (!z.alive) continue;
+      var rel = z.z - state.distance;
+      if (rel > 10 && rel < 520) {
+        hasTarget = true;
+        break;
+      }
+    }
+    if (hasTarget) tryFire(state);
+
+    updateBullets(state, dt);
+    if (state.status !== 'running') return state._events;
+
+    updateZombies(state, dt);
+    if (state.status !== 'running') return state._events;
+
+    pruneFar(state);
+
+    // Win condition
+    if (!state.endless && state.targetDistance > 0 && state.distance >= state.targetDistance) {
+      state.status = 'won';
+      state._events.push({ type: 'win', distance: state.distance, score: state.score, kills: state.kills });
+    }
+
+    // Decay combo if no recent kill — soft
+    if (state.combo > 0 && state._events.every(function (e) { return e.type !== 'kill'; })) {
+      // no decay per frame; decay handled by idle timer via comboWindow
+    }
+
+    return state._events;
+  }
+
+  function getHUD(state) {
+    var ws = weaponStats(state.weaponLevel);
+    return {
+      weaponLevel: ws.level,
+      damage: ws.damage,
+      pellets: ws.pellets,
+      firepower: ws.firepower,
+      fireInterval: ws.fireInterval,
+      score: state.score,
+      kills: state.kills,
+      distance: Math.floor(state.distance),
+      targetDistance: state.targetDistance,
+      progress: state.targetDistance ? clamp(state.distance / state.targetDistance, 0, 1) : 0,
+      status: state.status,
+      failReason: state.failReason,
+      combo: state.combo,
+      levelName: state.levelName,
+      levelId: state.levelId
+    };
+  }
+
+  // --- Simulation helpers for tests ---
+  function simulate(cfg, defaults, seed, steps, policy) {
+    var state = createState(cfg, defaults, seed);
+    policy = policy || 'prefer_add';
+    for (var s = 0; s < steps && state.status === 'running'; s++) {
+      var input = { left: false, right: false };
+      // Look for nearest unhit gate ahead
+      var best = null;
+      var bestRel = 1e9;
+      for (var i = 0; i < state.gates.length; i++) {
+        var g = state.gates[i];
+        if (g.hit) continue;
+        var rel = g.z - state.distance;
+        if (rel < 5 || rel > 200) continue;
+        if (rel < bestRel) {
+          bestRel = rel;
+          best = g;
+        }
+      }
+      // Also prefer pickups
+      for (var p = 0; p < state.pickups.length; p++) {
+        var pk = state.pickups[p];
+        if (pk.hit) continue;
+        var pr = pk.z - state.distance;
+        if (pr > 5 && pr < bestRel && pr < 200) {
+          bestRel = pr;
+          best = pk;
+        }
+      }
+      if (best) {
+        var targetLane = best.lane;
+        if (policy === 'prefer_add') {
+          // among gates in same row (similar z), pick highest add/mul
+          var rowBest = best;
+          var rowScore = -1e9;
+          function scoreGate(g) {
+            if (g.type === 'mul') return 1000 + g.n * 50;
+            if (g.type === 'add' || g.type === 'pickup') return 100 + g.n;
+            if (g.type === 'sub') return -g.n;
+            return 0;
+          }
+          var all = state.gates.concat(state.pickups);
+          for (var k = 0; k < all.length; k++) {
+            var cand = all[k];
+            if (cand.hit) continue;
+            if (Math.abs(cand.z - best.z) > 15) continue;
+            var sc = scoreGate(cand);
+            if (sc > rowScore) {
+              rowScore = sc;
+              rowBest = cand;
+            }
+          }
+          targetLane = rowBest.lane;
+        }
+        if (state.lane < targetLane) input.right = true;
+        else if (state.lane > targetLane) input.left = true;
+      }
+      step(state, 16, input);
+    }
+    return state;
+  }
+
+  var NGCore = {
     clamp: clamp,
     lerp: lerp,
     mulberry32: mulberry32,
+    weaponStats: weaponStats,
+    applyGate: applyGate,
+    gateLabel: gateLabel,
+    makeGateRow: makeGateRow,
+    makeZombiePack: makeZombiePack,
+    createState: createState,
+    requestLane: requestLane,
+    step: step,
+    getHUD: getHUD,
+    simulate: simulate,
     POSITIVE: POSITIVE,
-    NEGATIVE: NEGATIVE
+    MAX_WEAPON: MAX_WEAPON,
+    MAX_PELLETS: MAX_PELLETS
   };
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = API;
+    module.exports = NGCore;
   }
-  global.NGCore = API;
+  global.NGCore = NGCore;
 })(typeof window !== 'undefined' ? window : global);

@@ -133,7 +133,7 @@ html, body {
   font-size: 22px;
   text-shadow: 0 0 14px rgba(34, 211, 238, 0.65);
 }
-#hud-power.pop {
+#hud-weapon.pop {
   display: inline-block;
   animation: powerPop 0.22s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
