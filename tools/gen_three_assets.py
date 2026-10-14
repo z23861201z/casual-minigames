@@ -248,10 +248,8 @@ def main():
     save(icon_shovel(), "sand-bucket/shovel.png")
     save(icon_rainbow(), "sand-bucket/rainbow.png")
     save(icon_magnet(), "sand-bucket/magnet.png")
-    save(soldier(0), "doom-gates/soldier-0.png")
-    save(soldier(1), "doom-gates/soldier-1.png")
-    save(zombie(False), "doom-gates/zombie.png")
-    save(zombie(True), "doom-gates/brute.png")
+    # Squad and zombie sheets are owned by tools/gen_doom_sprites.py.
+    # Do not write the old block-person placeholders back over them.
     save(cover_sand(), "hub/cover-sand.png")
     save(cover_duck(), "hub/cover-duck.png")
     save(cover_doom(), "hub/cover-doom.png")

@@ -9,7 +9,8 @@
     "Runner anchor: feet near 92% height, back view, two run frames.",
     "Monster anchor: body centered, feet/base near 88% height.",
     "Door aspect 3:4. Gameplay numbers are drawn by the canvas, not baked.",
-    "Three-game kit from tools/gen_three_assets.py is procedural Pillow only."
+    "Three-game kit from tools/gen_three_assets.py is procedural Pillow only.",
+    "Doom Gates squad/zombie sheets from tools/gen_doom_sprites.py (original Pillow, transparent, no web images)."
   ],
   "slices": {
     "ui/hud-frame.png": 64,
@@ -90,7 +91,16 @@
     "duck-pop/duck-6.png",
     "duck-pop/duck-7.png",
     "duck-pop/duck-8.png",
-    "duck-pop/duck-9.png"
+    "duck-pop/duck-9.png",
+    "doom-gates/sprites/soldier-front.png",
+    "doom-gates/sprites/soldier-side.png",
+    "doom-gates/sprites/soldier-back.png",
+    "doom-gates/sprites/soldier-idle.png",
+    "doom-gates/sprites/soldier-run.png",
+    "doom-gates/sprites/soldier-shoot.png",
+    "doom-gates/sprites/soldier-hit.png",
+    "doom-gates/sprites/zombie-walk.png",
+    "doom-gates/sprites/brute-walk.png"
   ],
   "check_problems": []
 }

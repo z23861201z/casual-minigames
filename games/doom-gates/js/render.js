@@ -7,17 +7,66 @@
 
   var FONT = '"Segoe UI", system-ui, "PingFang SC", "Noto Sans SC", sans-serif';
   var images = {};
+  // Horizontal strips from tools/gen_doom_sprites.py. Run and shoot share a phase.
+  var SHEETS = {
+    'soldier-front': { file: 'sprites/soldier-front.png', frames: 1 },
+    'soldier-side': { file: 'sprites/soldier-side.png', frames: 1 },
+    'soldier-back': { file: 'sprites/soldier-back.png', frames: 1 },
+    'soldier-idle': { file: 'sprites/soldier-idle.png', frames: 4 },
+    'soldier-run': { file: 'sprites/soldier-run.png', frames: 6 },
+    'soldier-shoot': { file: 'sprites/soldier-shoot.png', frames: 6 },
+    'soldier-hit': { file: 'sprites/soldier-hit.png', frames: 3 },
+    'zombie-walk': { file: 'sprites/zombie-walk.png', frames: 6 },
+    'brute-walk': { file: 'sprites/brute-walk.png', frames: 6 }
+  };
 
   function load() {
-    ['soldier-0', 'soldier-1', 'zombie', 'brute'].forEach(function (name) {
+    Object.keys(SHEETS).forEach(function (name) {
       var img = new Image();
-      img.src = '../../assets/doom-gates/' + name + '.png';
+      img.src = '../../assets/doom-gates/' + SHEETS[name].file;
       images[name] = img;
     });
   }
 
   function ready(img) {
     return img && img.complete && img.naturalWidth > 0;
+  }
+
+  function drawSheet(ctx, key, frame, footX, footY, dh) {
+    var img = images[key];
+    var spec = SHEETS[key];
+    if (!ready(img) || !spec || !dh) return false;
+    var n = spec.frames;
+    var i = ((frame % n) + n) % n;
+    var fw = img.naturalWidth / n;
+    var fh = img.naturalHeight;
+    var dw = dh * (fw / fh);
+    ctx.drawImage(img, i * fw, 0, fw, fh, footX - dw / 2, footY - dh, dw, dh);
+    return true;
+  }
+
+  function squadThreatened(state) {
+    if (!state || !state.zombies) return false;
+    for (var i = 0; i < state.zombies.length; i++) {
+      var z = state.zombies[i];
+      if (!z.alive || z.collide === false) continue;
+      if (z.z >= state.z - 0.05 && z.z <= state.z + 0.75 && Math.abs(z.x - state.x) < 0.62) return true;
+    }
+    return false;
+  }
+
+  function soldierSheet(state, fx) {
+    if (squadThreatened(state)) return 'soldier-hit';
+    if (fx && fx.muzzle > 0.012) return 'soldier-shoot';
+    if (state && state.phase && state.phase !== 'run') return 'soldier-idle';
+    return 'soldier-run';
+  }
+
+  function soldierFrame(key, fx, i) {
+    var t = (fx && fx.time) || 0;
+    if (key === 'soldier-hit') return Math.floor(t * 14 + i) % 3;
+    if (key === 'soldier-idle') return Math.floor(t * 5 + i) % 4;
+    return Math.floor(t * 10 + i) % 6;
   }
 
   function layout(w, h) {
@@ -87,12 +136,9 @@
     return { bg: '#49c6ff', fg: '#04283a', edge: '#1578aa' };
   }
 
-  function drawSoldier(ctx, x, y, s, frame) {
-    var img = images[frame % 2 === 0 ? 'soldier-0' : 'soldier-1'];
-    if (ready(img)) {
-      ctx.drawImage(img, x - s * 0.5, y - s * 1.15, s, s * 1.25);
-      return;
-    }
+  function drawSoldier(ctx, x, y, s, frame, action) {
+    var key = action || 'soldier-run';
+    if (drawSheet(ctx, key, frame, x, y + s * 0.06, s * 1.5)) return true;
     ctx.save();
     ctx.translate(x, y);
     ctx.fillStyle = '#2f6fbe';
@@ -114,15 +160,17 @@
     ctx.fillStyle = '#ddd';
     ctx.fillRect(s * 0.12, -s * 0.58, s * 0.22, s * 0.06);
     ctx.restore();
+    return false;
   }
 
-  function drawZombieSprite(ctx, x, y, s, kind, flash) {
-    var img = images[kind === 'brute' ? 'brute' : 'zombie'];
+  function drawZombieSprite(ctx, x, y, s, kind, flash, time, seed) {
+    var sheet = kind === 'brute' ? 'brute-walk' : 'zombie-walk';
+    var fps = kind === 'brute' ? 6 : 8;
+    var frame = Math.floor((time || 0) * fps + (seed || 0) * 2);
     ctx.save();
-    if (flash > 0) ctx.globalAlpha = 0.45 + flash * 2;
-    if (ready(img)) {
-      var h = kind === 'brute' ? s * 1.35 : s * 1.2;
-      ctx.drawImage(img, x - s * 0.55, y - h, s * 1.1, h);
+    if (flash > 0) ctx.globalAlpha = Math.min(1, 0.55 + flash * 2);
+    var dh = kind === 'brute' ? s * 1.62 : s * 1.42;
+    if (drawSheet(ctx, sheet, frame, x, y, dh)) {
       ctx.restore();
       return;
     }
@@ -299,20 +347,22 @@
         var jitter = ((Math.round(zombie.z * 10) % 5) - 2) * L.w * 0.02;
         if (inFront) {
           var near = DGCore.clamp((9 - p.depth) / 7, 0, 1);
-          size = (zombie.kind === 'brute' ? 72 : 56) + near * (zombie.kind === 'brute' ? 48 : 36);
-          var spriteUp = size * 1.22;
+          var brute = zombie.kind === 'brute';
+          size = (brute ? 86 : 66) + near * (brute ? 58 : 44);
+          var spriteMul = brute ? 1.62 : 1.42;
+          var spriteUp = size * spriteMul;
           var gateBottom = leadGate ? Math.min(leadGate.sy, L.h * 0.58) : L.h * 0.42;
           var room = L.h * 0.76 - gateBottom - 8;
           if (spriteUp > room) {
-            size = Math.max(42, (room - 4) / 1.22);
-            spriteUp = size * 1.22;
+            size = Math.max(48, (room - 4) / spriteMul);
+            spriteUp = size * spriteMul;
           }
           var drop = leadGate ? DGCore.clamp((leadGate.depth - p.depth) / 12, 0, 1) : 1;
           sy = Math.min(L.h * 0.76, gateBottom + spriteUp + 4 + drop * Math.max(0, room - spriteUp));
           var laneMag = Math.min(L.w * 0.34, Math.max(L.w * 0.16, Math.abs(drawX) * L.w * 0.36));
           sx = L.cx + sideSign * laneMag + jitter;
         } else {
-          size = zombie.kind === 'brute' ? 38 : 30;
+          size = zombie.kind === 'brute' ? 52 : 40;
           var gateTop = Math.min(leadGate.sy, L.h * 0.58) - leadGate.sh;
           sx = L.cx + sideSign * Math.min(L.w * 0.46, Math.max(L.w * 0.38, Math.abs(p.sx - L.cx))) + jitter;
           sy = Math.min(gateTop - 4, Math.max(L.horizon + 32, p.sy));
@@ -321,7 +371,7 @@
         ctx.beginPath();
         ctx.ellipse(sx, sy + 4, size * 0.34, size * 0.1, 0, 0, Math.PI * 2);
         ctx.fill();
-        drawZombieSprite(ctx, sx, sy, size, zombie.kind === 'crowd' ? 'walker' : zombie.kind, zombie.flash || 0);
+        drawZombieSprite(ctx, sx, sy, size, zombie.kind === 'crowd' ? 'walker' : zombie.kind, zombie.flash || 0, fx.time || 0, zombie.z || 0);
         if (zombie.hp < zombie.maxHp) {
           var bw = Math.max(28, size * 0.7);
           var by = sy - size * 1.42;
@@ -421,13 +471,14 @@
     ctx.fillRect(baseX - 2, h - 148, 4, 28);
     var cols = vis <= 3 ? Math.max(1, vis) : 4;
     var size = vis <= 1 ? 108 : vis <= 4 ? 76 : 58;
+    var action = soldierSheet(state, fx);
     for (var i = 0; i < vis; i++) {
       var col = i % cols;
       var row = Math.floor(i / cols);
       var sx = baseX + (col - (cols - 1) / 2) * (size * 0.92);
-      var sy = h - 108 - row * (size * 0.72) + Math.sin(fx.time * 12 + i) * 2;
-      drawSoldier(ctx, sx, sy, size, Math.floor(fx.time * 8) + i);
-      if (fx.muzzle > 0) {
+      var sy = h - 108 - row * (size * 0.72);
+      var drew = drawSoldier(ctx, sx, sy, size, soldierFrame(action, fx, i), action);
+      if (!drew && fx.muzzle > 0) {
         ctx.strokeStyle = 'rgba(255, 236, 160, ' + Math.min(1, fx.muzzle * 8) + ')';
         ctx.lineWidth = 3;
         ctx.beginPath();
