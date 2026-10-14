@@ -132,6 +132,73 @@
     }
   ];
 
+  function makeLevel(id, name, start, weapon, speed, rows, need, wname) {
+    var gates = [];
+    var zombies = [];
+    var z = 14;
+    var positives = [
+      { type: 'add', n: 8 + id },
+      { type: 'mul', n: 2 },
+      { type: 'add', n: 12 + id * 2 }
+    ];
+    var negatives = [
+      { type: 'sub', n: 3 + Math.floor(id / 2) },
+      { type: 'div', n: 2 }
+    ];
+    for (var i = 0; i < rows; i++) {
+      var good = positives[i % positives.length];
+      var bad = negatives[i % negatives.length];
+      var leftGood = i % 2 === 0;
+      gates.push({
+        z: z,
+        left: leftGood ? { type: good.type, n: good.n } : { type: bad.type, n: bad.n },
+        right: leftGood ? { type: bad.type, n: bad.n } : { type: good.type, n: good.n }
+      });
+      var zz = z + 7;
+      zombies.push([zz, -0.42, i % 4 === 0 ? 'brute' : 'walker']);
+      zombies.push([zz + 1.4, 0.48, 'walker']);
+      zombies.push([zz + 2.6, 0.1, 'walker']);
+      if (id >= 8) zombies.push([zz + 3.2, -0.2, 'brute']);
+      z += 24;
+    }
+    return {
+      id: id,
+      name: name,
+      startSquad: start,
+      weapon: weapon,
+      speed: speed,
+      gates: gates,
+      zombies: Z(zombies),
+      finish: { z: z + 8, need: need, weapon: Math.min(5, weapon + 1), name: wname }
+    };
+  }
+
+  LEVELS.push(
+    makeLevel(6, '桥面决策', 10, 2, 6.6, 5, 70, '步枪'),
+    makeLevel(7, '射门降压', 12, 2, 6.7, 5, 90, '霰弹枪'),
+    makeLevel(8, '精英尸潮', 12, 3, 6.8, 6, 110, '霰弹枪'),
+    makeLevel(9, '连续尸潮', 14, 3, 6.9, 6, 140, '加特林'),
+    makeLevel(10, '武器门验收', 15, 4, 7.0, 6, 160, '火箭筒')
+  );
+
+  var EARLY = { 1: 5, 2: 6, 3: 8, 4: 10, 5: 12 };
+  LEVELS.forEach(function (level) {
+    if (EARLY[level.id]) level.startSquad = EARLY[level.id];
+    var waves = [];
+    for (var i = 0; i < level.gates.length; i++) {
+      waves.push({
+        z: level.gates[i].z + 2.6,
+        x: i % 2 === 0 ? 0.02 : -0.05,
+        count: 18 + Math.min(14, level.id * 2),
+        cols: 5,
+        kind: 'crowd',
+        spacingX: 0.15,
+        spacingZ: 0.5
+      });
+    }
+    level.zombieWaves = waves;
+  });
+
   global.DGLevels = LEVELS;
   if (typeof module !== 'undefined' && module.exports) module.exports = LEVELS;
 })(typeof window !== 'undefined' ? window : global);

@@ -145,16 +145,38 @@
     var h = L.h;
     ctx.clearRect(0, 0, w, h);
     var sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#d9f3ff');
-    sky.addColorStop(0.42, '#f4fbff');
-    sky.addColorStop(1, '#f8e3bf');
+    sky.addColorStop(0, '#7ec8ff');
+    sky.addColorStop(0.38, '#dff4ff');
+    sky.addColorStop(0.62, '#3ec6e0');
+    sky.addColorStop(0.78, '#f6d7a2');
+    sky.addColorStop(1, '#e7b56a');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.fillStyle = '#fff8d8';
     ctx.beginPath();
-    ctx.ellipse(w * 0.2, 36, 46, 16, 0, 0, Math.PI * 2);
-    ctx.ellipse(w * 0.78, 48, 36, 12, 0, 0, Math.PI * 2);
+    ctx.arc(w * 0.78, h * 0.12, 22, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath();
+    ctx.ellipse(w * 0.22, 48, 46, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.48, 70, 36, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    var seaY = L.grid.y + L.grid.h + 8;
+    ctx.fillStyle = '#2bb3d6';
+    ctx.fillRect(0, seaY, w, Math.max(0, L.duckBand.y - seaY));
+    ctx.fillStyle = '#f3d2a0';
+    ctx.fillRect(0, L.duckBand.y - 8, w, h);
+    ctx.fillStyle = '#c9854a';
+    roundRect(ctx, 8, L.duckBand.y - 6, w - 16, L.duckBand.h + 16, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90, 48, 18, .35)';
+    ctx.lineWidth = 2;
+    for (var plank = L.duckBand.y; plank < L.duckBand.y + L.duckBand.h; plank += 14) {
+      ctx.beginPath();
+      ctx.moveTo(16, plank);
+      ctx.lineTo(w - 16, plank);
+      ctx.stroke();
+    }
 
     ctx.save();
     if (fx.shake > 0.4) ctx.translate((Math.random() - 0.5) * fx.shake, (Math.random() - 0.5) * fx.shake);
@@ -207,6 +229,21 @@
     ctx.font = '800 11px ' + FONT;
     ctx.textAlign = 'center';
     ctx.fillText('发射台', L.launch.x, L.launch.y + 28);
+    if (fx.beam && L.grid) {
+      var pal = DPCore.COLORS[fx.beam.color] || DPCore.COLORS[0];
+      var x1 = L.grid.x + (fx.beam.col + 0.5) * L.grid.cell;
+      var y1 = L.grid.y + L.grid.h - 4;
+      ctx.save();
+      ctx.strokeStyle = pal.hex;
+      ctx.lineWidth = 4;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(L.launch.x, L.launch.y - 10);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
     if (fx.launcher) {
       var bob = Math.sin(fx.time * (fx.speed === 2 ? 12 : 6)) * 3;
       drawDuck(ctx, L.launch.x - 24, L.launch.y - 40 + bob, 48, fx.launcher.color, fx.launcher.ammo, true);

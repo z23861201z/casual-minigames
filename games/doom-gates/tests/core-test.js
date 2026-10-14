@@ -146,6 +146,32 @@ function assertEq(a, b, msg) {
   assertEq(state.gates[0].left.n, 1, 'the other gate stays put');
 })();
 
+(function hordePack() {
+  var level = {
+    id: 80,
+    name: 'horde',
+    startSquad: 5,
+    weapon: 1,
+    speed: 6,
+    gates: [{ z: 20, left: { type: 'add', n: 2 }, right: { type: 'add', n: 1 } }],
+    zombies: [],
+    zombieWaves: [{ z: 24, x: 0, count: 18, cols: 6, kind: 'crowd' }],
+    finish: { z: 40, need: 1, weapon: 1, name: '手枪' }
+  };
+  var state = DGCore.create(level);
+  assertEq(state.zombies.length, 18, 'wave expands into a horde');
+  var zs = [];
+  for (var i = 0; i < state.zombies.length; i++) {
+    var z = state.zombies[i];
+    assert(z.x >= -0.85 && z.x <= 0.85, 'horde x stays on the road');
+    assert(z.kind === 'crowd', 'packed tide is crowd');
+    zs.push(z.z);
+  }
+  zs.sort(function (a, b) { return a - b; });
+  assert(zs[0] >= 23.5 && zs[zs.length - 1] < 32, 'horde stays near its anchor');
+  assert(LEVELS.length >= 10, 'campaign has at least 10 levels');
+})();
+
 (function endlessShape() {
   var level = DGCore.buildEndless(2, 5);
   assert(level.gates.length >= 5, 'endless has gates');

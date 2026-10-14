@@ -70,6 +70,10 @@ body {
   pointer-events: auto;
   touch-action: manipulation;
 }
+#tools button[data-act="speed"] { background: linear-gradient(180deg, #5ee07a, #16a34a); box-shadow: 0 4px 0 #15803d; }
+#tools button[data-act="upgrade"] { background: linear-gradient(180deg, #60a5fa, #2563eb); box-shadow: 0 4px 0 #1d4ed8; }
+#tools button[data-act="clear"] { background: linear-gradient(180deg, #c084fc, #7c3aed); box-shadow: 0 4px 0 #6d28d9; }
+#tools button[data-act="shuffle"] { background: linear-gradient(180deg, #fdba74, #f97316); box-shadow: 0 4px 0 #c2410c; }
 #tools button.on { background: linear-gradient(180deg, #ffe36b, #ff9f1c); box-shadow: 0 4px 0 #e07b00; color: #3a2500; }
 #tools button:disabled { filter: grayscale(.3); opacity: .85; }
 #floats { position: absolute; inset: 0; pointer-events: none; z-index: 6; overflow: hidden; }

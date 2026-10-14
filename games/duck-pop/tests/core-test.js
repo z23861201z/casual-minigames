@@ -70,7 +70,7 @@ function greedy(level) {
 }
 
 (function levels() {
-  assert(LEVELS.length >= 6, 'at least 6 duck levels');
+  assert(LEVELS.length >= 10, 'at least 10 duck levels');
   for (var i = 0; i < LEVELS.length; i++) {
     var state = greedy(LEVELS[i]);
     assertEq(state.status, 'win', LEVELS[i].name + ' greedy bot clears');

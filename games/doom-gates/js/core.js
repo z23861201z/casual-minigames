@@ -119,14 +119,41 @@
       x: t.x,
       z: t.z,
       kind: t.kind || 'walker',
-      hp: kind.hp,
-      maxHp: kind.hp,
+      hp: t.hp || kind.hp,
+      maxHp: t.hp || kind.hp,
       r: kind.r,
       speed: kind.speed,
       collide: kind.collide !== false,
       score: kind.score,
       alive: true
     };
+  }
+
+  /**
+   * Pack a horde into a tight on-road block. Feet share the road x range.
+   * crowd does not collide, so the mass reads as a tide without wiping the squad.
+   */
+  function expandWaves(waves) {
+    var out = [];
+    (waves || []).forEach(function (w) {
+      var count = Math.max(1, w.count || 12);
+      var cols = Math.max(1, w.cols || Math.min(6, count));
+      var spacingX = w.spacingX || 0.14;
+      var spacingZ = w.spacingZ || 0.55;
+      var cx = w.x || 0;
+      var cz = w.z || 0;
+      var kind = w.kind || 'crowd';
+      for (var i = 0; i < count; i++) {
+        var col = i % cols;
+        var row = Math.floor(i / cols);
+        var rowCols = Math.min(cols, count - row * cols);
+        var x = cx + (col - (rowCols - 1) / 2) * spacingX;
+        if (row % 2 === 1) x += spacingX * 0.35;
+        x = clamp(x, -0.78, 0.78);
+        out.push({ x: x, z: cz + row * spacingZ, kind: row === 0 && w.front ? w.front : kind });
+      }
+    });
+    return out;
   }
 
   function weaponByIndex(i) {
@@ -148,7 +175,7 @@
       speed: level.speed || 6.2,
       fireCd: 0.05,
       bullets: [],
-      zombies: (level.zombies || []).map(makeZombie),
+      zombies: (level.zombies || []).map(makeZombie).concat(expandWaves(level.zombieWaves).map(makeZombie)),
       gates: (level.gates || []).map(function (g) {
         return { z: g.z, used: false, left: cloneSide(g.left), right: cloneSide(g.right) };
       }),
@@ -382,7 +409,7 @@
     dt = clamp(dt, 0, 0.05);
     state.time += dt;
     var dx = state.targetX - state.x;
-    var maxStep = 16 * dt;
+    var maxStep = 24 * dt;
     if (Math.abs(dx) <= maxStep) state.x = state.targetX;
     else state.x += Math.sign(dx) * maxStep;
     state.x = clamp(state.x, -0.86, 0.86);
@@ -560,6 +587,7 @@
     botTarget: botTarget,
     runBot: runBot,
     buildEndless: buildEndless,
+    expandWaves: expandWaves,
     weaponByIndex: weaponByIndex,
     fireInterval: fireInterval,
     volleyCount: volleyCount

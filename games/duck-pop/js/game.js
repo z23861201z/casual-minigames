@@ -344,7 +344,8 @@
         fallU: screen === 'play' && anim ? Math.min(1, anim.t / anim.dur) : 1,
         speed: speed,
         launcher: screen === 'play' ? launcher : null,
-        aim: aim
+        aim: aim,
+        beam: screen === 'play' && anim ? { col: anim.col, color: anim.color, u: Math.min(1, anim.t / anim.dur) } : null
       });
     }
     if (screen === 'play') refreshTools();

@@ -123,49 +123,98 @@
     };
   }
 
+  function capTier(cap) {
+    if (cap >= 24) return 1.34;
+    if (cap >= 16) return 1.22;
+    if (cap >= 12) return 1.12;
+    if (cap >= 8) return 1.05;
+    return 1;
+  }
+
   function paintBucket(ctx, rect, bucket, opts) {
     var pal = bucket.rainbow
-      ? { hex: '#fff', dark: '#d7def0', ink: '#243044' }
+      ? { hex: '#fff', dark: '#d7def0', ink: '#243044', name: '彩虹' }
       : SBCore.colorOf(bucket.color);
+    var scale = capTier(bucket.cap);
+    var w = rect.w * scale;
+    var h = rect.h * scale;
+    var x = rect.x + (rect.w - w) / 2;
+    var y = rect.y + (rect.h - h) / 2;
     ctx.save();
     if (opts.hot) {
-      ctx.shadowColor = 'rgba(255, 170, 40, .85)';
-      ctx.shadowBlur = 16;
+      ctx.shadowColor = 'rgba(255, 170, 40, .9)';
+      ctx.shadowBlur = 18;
     } else if (opts.selected) {
-      ctx.shadowColor = 'rgba(80, 160, 255, .8)';
-      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(255, 120, 170, .75)';
+      ctx.shadowBlur = 14;
     }
-    roundRect(ctx, rect.x, rect.y, rect.w, rect.h, Math.min(16, rect.w * 0.22));
-    var g = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+    // bowl body
+    ctx.beginPath();
+    ctx.moveTo(x + 6, y + h * 0.28);
+    ctx.quadraticCurveTo(x + w / 2, y + h * 1.02, x + w - 6, y + h * 0.28);
+    ctx.lineTo(x + w - 10, y + h * 0.22);
+    ctx.quadraticCurveTo(x + w / 2, y + h * 0.55, x + 10, y + h * 0.22);
+    ctx.closePath();
+    var g = ctx.createLinearGradient(x, y, x, y + h);
     g.addColorStop(0, '#fff');
-    g.addColorStop(0.18, pal.hex);
+    g.addColorStop(0.25, pal.hex);
     g.addColorStop(1, pal.dark);
     ctx.fillStyle = g;
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.lineWidth = opts.selected ? 3 : 2;
-    ctx.strokeStyle = opts.selected ? '#2563eb' : 'rgba(90, 52, 28, .45)';
+    ctx.strokeStyle = opts.selected ? '#fb7185' : 'rgba(90, 52, 28, .35)';
     ctx.stroke();
-    var hole = Math.max(6, rect.h * 0.16);
-    roundRect(ctx, rect.x + 6, rect.y + 5, rect.w - 12, hole, 6);
-    ctx.fillStyle = 'rgba(40, 24, 16, .18)';
-    ctx.fill();
-    if (bucket.rainbow) {
-      var stripe = ['#ff6b6b', '#ffd93d', '#6bcB77', '#4dabf7', '#b197fc'];
-      for (var s = 0; s < stripe.length; s++) {
-        ctx.fillStyle = stripe[s];
-        ctx.fillRect(rect.x + 8 + s * ((rect.w - 16) / stripe.length), rect.y + rect.h * 0.42, (rect.w - 16) / stripe.length - 1, 4);
+    // sand fill
+    var ratio = bucket.cap > 0 ? Math.max(0, Math.min(1, bucket.fill / bucket.cap)) : 0;
+    if (ratio > 0.02) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x + 8, y + h * 0.3);
+      ctx.quadraticCurveTo(x + w / 2, y + h * 0.95, x + w - 8, y + h * 0.3);
+      ctx.quadraticCurveTo(x + w / 2, y + h * 0.5, x + 8, y + h * 0.3);
+      ctx.clip();
+      var sandTop = y + h * 0.72 - ratio * h * 0.42;
+      ctx.fillStyle = pal.hex;
+      ctx.fillRect(x, sandTop, w, y + h - sandTop);
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      for (var gx = x + 6; gx < x + w - 4; gx += 5) {
+        ctx.fillRect(gx, sandTop + 3, 2, 2);
       }
+      ctx.restore();
     }
+    // rim
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h * 0.26, w * 0.42, h * 0.12, 0, 0, Math.PI * 2);
+    ctx.fillStyle = pal.dark;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h * 0.24, w * 0.34, h * 0.08, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(40, 24, 16, .25)';
+    ctx.fill();
+    // face
+    ctx.fillStyle = '#3a2a22';
+    var ey = y + h * 0.5;
+    ctx.beginPath();
+    ctx.arc(x + w * 0.36, ey, Math.max(1.5, w * 0.035), 0, Math.PI * 2);
+    ctx.arc(x + w * 0.64, ey, Math.max(1.5, w * 0.035), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a2a22';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + h * 0.54, w * 0.08, 0.2, Math.PI - 0.2);
+    ctx.stroke();
     var remain = Math.max(0, bucket.cap - bucket.fill);
-    var big = bucket.fill >= bucket.cap ? '满' : String(remain);
+    var big = bucket.fill >= bucket.cap ? '满' : (remain + '/' + bucket.cap);
     ctx.fillStyle = pal.ink;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '900 ' + Math.max(12, Math.floor(rect.h * 0.34)) + 'px ' + FONT;
-    ctx.fillText(big, rect.x + rect.w / 2, rect.y + rect.h * 0.56);
-    ctx.font = '700 ' + Math.max(9, Math.floor(rect.h * 0.15)) + 'px ' + FONT;
-    ctx.fillText('容量 ' + bucket.cap, rect.x + rect.w / 2, rect.y + rect.h * 0.84);
+    ctx.font = '900 ' + Math.max(10, Math.floor(h * 0.2)) + 'px ' + FONT;
+    ctx.fillText(big, x + w / 2, y + h * 0.78);
+    if (scale > 1.08) {
+      ctx.font = '800 ' + Math.max(8, Math.floor(h * 0.12)) + 'px ' + FONT;
+      ctx.fillText('大桶', x + w / 2, y + 2);
+    }
     ctx.restore();
   }
 
@@ -174,9 +223,9 @@
     var h = L.h;
     ctx.clearRect(0, 0, w, h);
     var bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#fff8ee');
-    bg.addColorStop(0.45, '#ffe7cf');
-    bg.addColorStop(1, '#ffd7c2');
+    bg.addColorStop(0, '#fff5f8');
+    bg.addColorStop(0.45, '#ffe4ee');
+    bg.addColorStop(1, '#ffd0e0');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 

@@ -90,7 +90,7 @@ function simPerfect(level) {
 }
 
 (function levels() {
-  assert(LEVELS.length >= 6, 'at least 6 sand levels');
+  assert(LEVELS.length >= 10, 'at least 10 sand levels');
   for (var i = 0; i < LEVELS.length; i++) {
     var state = simPerfect(LEVELS[i]);
     assertEq(state.status, 'win', LEVELS[i].name + ' perfect bot wins');

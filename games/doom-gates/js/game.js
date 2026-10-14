@@ -138,7 +138,9 @@
       } else if (ev.type === 'hit') {
         audio.hit();
       } else if (ev.type === 'kill') {
-        floatAt(ev.text, ev.x < 0 ? viewW * 0.3 : viewW * 0.7, viewH * 0.64, 'good');
+        var kp = DGRender.project(DGRender.layout(viewW, viewH), state, ev.x, ev.z);
+        floatAt(ev.text, kp ? kp.sx : viewW / 2, kp ? kp.sy - 36 : viewH * 0.5, 'good');
+        shake = Math.min(8, shake + 2);
       } else if (ev.type === 'win') end('win');
       else if (ev.type === 'lose') end('lose');
     }
@@ -169,6 +171,9 @@
         zombie._hp = zombie.hp;
       }
       if (zombie.flash > 0) zombie.flash -= dt;
+      if (zombie.alive) zombie._seen = true;
+      else if (zombie._seen && zombie.dying == null && zombie.z > state.z - 1.2) zombie.dying = 0.18;
+      if (zombie.dying > 0) zombie.dying -= dt;
     });
     drain();
     if (screen !== 'play') return;
@@ -299,7 +304,7 @@
     if (!dragging || !state) return;
     e.preventDefault();
     var dx = e.clientX - dragging.x;
-    state.targetX = DGCore.clamp(dragging.target + dx / (dragging.width * 0.42), -0.86, 0.86);
+    state.targetX = DGCore.clamp(dragging.target + dx / (dragging.width * 0.46), -0.86, 0.86);
   });
   cv.addEventListener('pointerup', function () { dragging = null; });
   cv.addEventListener('pointercancel', function () { dragging = null; });
