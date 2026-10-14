@@ -40,7 +40,7 @@
       var ub = up[B.color] ? 0 : 1;
       if (ua !== ub) return ua - ub;
       if (A.color !== B.color) return A.color - B.color;
-      return A.cap - B.cap || A.id - B.id;
+      return B.cap - A.cap || A.id - B.id;
     });
     return ids;
   }
@@ -144,7 +144,7 @@
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.lineWidth = opts.selected ? 3 : 2;
-    ctx.strokeStyle = opts.selected ? '#3b82f6' : 'rgba(255,255,255,.8)';
+    ctx.strokeStyle = opts.selected ? '#2563eb' : 'rgba(90, 52, 28, .45)';
     ctx.stroke();
     var hole = Math.max(6, rect.h * 0.16);
     roundRect(ctx, rect.x + 6, rect.y + 5, rect.w - 12, hole, 6);
@@ -157,15 +157,15 @@
         ctx.fillRect(rect.x + 8 + s * ((rect.w - 16) / stripe.length), rect.y + rect.h * 0.42, (rect.w - 16) / stripe.length - 1, 4);
       }
     }
-    var big = bucket.fill > 0 ? String(bucket.fill) : String(bucket.cap);
+    var remain = Math.max(0, bucket.cap - bucket.fill);
+    var big = bucket.fill >= bucket.cap ? '满' : String(remain);
     ctx.fillStyle = pal.ink;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = '900 ' + Math.max(12, Math.floor(rect.h * 0.34)) + 'px ' + FONT;
-    ctx.fillText(big, rect.x + rect.w / 2, rect.y + rect.h * 0.58);
-    ctx.font = '700 ' + Math.max(9, Math.floor(rect.h * 0.14)) + 'px ' + FONT;
-    var sub = bucket.fill >= bucket.cap ? '满' : (bucket.fill > 0 ? '/' + bucket.cap : '容量');
-    ctx.fillText(sub, rect.x + rect.w / 2, rect.y + rect.h * 0.84);
+    ctx.fillText(big, rect.x + rect.w / 2, rect.y + rect.h * 0.56);
+    ctx.font = '700 ' + Math.max(9, Math.floor(rect.h * 0.15)) + 'px ' + FONT;
+    ctx.fillText('容量 ' + bucket.cap, rect.x + rect.w / 2, rect.y + rect.h * 0.84);
     ctx.restore();
   }
 
@@ -200,21 +200,30 @@
         var y = L.grid.y + cell.r * L.grid.cell;
         var s = L.grid.cell - 1.2;
         roundRect(ctx, x, y, s, s, Math.min(3, s * 0.2));
-        if (cell.state === 'flight') ctx.fillStyle = 'rgba(232, 196, 164, .35)';
-        else if (cell.state === 'lost') ctx.fillStyle = '#e7cfcf';
-        else if (cell.state === 'bucket') ctx.fillStyle = pal.hex;
-        else ctx.fillStyle = pal.hex;
-        ctx.globalAlpha = cell.state === 'bucket' ? 0.45 : (cell.state === 'flight' ? 0.7 : 1);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        if (cell.state === 'solid' || cell.state === 'delivered') {
-          ctx.fillStyle = 'rgba(255,255,255,.35)';
+        if (cell.state === 'lost') {
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#ecd5d2';
+          ctx.fill();
+        } else if (cell.state === 'delivered') {
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = pal.hex;
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,.4)';
           ctx.fillRect(x + 1, y + 1, s * 0.45, Math.max(1, s * 0.18));
+          if ((cell.c + cell.r + Math.floor(fx.time * 3)) % 9 === 0) {
+            ctx.fillStyle = 'rgba(255,255,255,.95)';
+            ctx.fillRect(x + s * 0.6, y + s * 0.25, 2, 2);
+          }
+        } else {
+          ctx.globalAlpha = 0.55;
+          ctx.fillStyle = pal.hex;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = pal.dark;
+          ctx.lineWidth = 1.25;
+          ctx.stroke();
         }
-        if (cell.state === 'delivered' && ((cell.c + cell.r + Math.floor(fx.time * 3)) % 9 === 0)) {
-          ctx.fillStyle = 'rgba(255,255,255,.9)';
-          ctx.fillRect(x + s * 0.6, y + s * 0.25, 2, 2);
-        }
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -241,13 +250,13 @@
     }
     ctx.restore();
 
-    ctx.fillStyle = '#6d8294';
+    ctx.fillStyle = '#3e5163';
     ctx.font = '800 12px ' + FONT;
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     var used = 0;
     for (var us = 0; us < state.slots.length; us++) if (state.slots[us] != null) used++;
-    ctx.fillText(used + '/' + state.slots.length, L.plus.x + 40, L.plus.y + 18);
+    ctx.fillText('传送带 ' + used + '/' + state.slots.length, L.belt.x + L.belt.w - 12, L.belt.y + 14);
 
     roundRect(ctx, L.plus.x, L.plus.y, L.plus.w, L.plus.h, 18);
     ctx.fillStyle = state.slots.length >= state.slotsCap ? '#d7d3cf' : '#7dce8a';
@@ -324,6 +333,10 @@
     for (var g = 0; g < fx.grains.length; g++) {
       var p = fx.grains[g];
       var gp = SBCore.colorOf(p.color);
+      ctx.fillStyle = 'rgba(60, 32, 18, .55)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 1.4, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = gp.dark;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -332,6 +345,14 @@
       ctx.beginPath();
       ctx.arc(p.x - p.r * 0.25, p.y - p.r * 0.3, p.r * 0.62, 0, Math.PI * 2);
       ctx.fill();
+    }
+    if (fx.drag && fx.drag.bucket) {
+      paintBucket(ctx, {
+        x: fx.drag.x - fx.drag.w / 2,
+        y: fx.drag.y - fx.drag.h / 2,
+        w: fx.drag.w,
+        h: fx.drag.h
+      }, fx.drag.bucket, { selected: true });
     }
     for (var sp = 0; sp < fx.sparks.length; sp++) {
       var spark = fx.sparks[sp];

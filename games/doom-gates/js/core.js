@@ -8,7 +8,7 @@
   'use strict';
 
   var MAX_SQUAD = 999;
-  var GATE_HITS = 3;
+  var GATE_HITS = 1;
   var FINISH_HITS = 5;
 
   var WEAPONS = [
@@ -60,6 +60,8 @@
   }
 
   function improveGate(gate) {
+    var beforeType = gate.type;
+    var beforeN = gate.n;
     if (gate.type === 'add') gate.n = Math.min(40, gate.n + 1);
     else if (gate.type === 'mul') gate.n = Math.min(4, gate.n + 1);
     else if (gate.type === 'sub') {
@@ -75,16 +77,17 @@
         gate.n = 1;
       }
     }
-    return gate;
+    return beforeType !== gate.type || beforeN !== gate.n;
   }
 
   function noteGateHit(gate, hits) {
     gate.hits = (gate.hits || 0) + (hits || 1);
     var improved = 0;
-    while (gate.hits >= GATE_HITS) {
+    var guard = 0;
+    while (gate.hits >= GATE_HITS && guard++ < 80) {
       gate.hits -= GATE_HITS;
-      improveGate(gate);
-      improved++;
+      if (improveGate(gate)) improved++;
+      else gate.hits = 0;
     }
     return improved;
   }
@@ -166,34 +169,36 @@
   }
 
   function fireInterval(squad) {
-    return Math.max(0.08, 0.28 - Math.min(squad, 36) * 0.005);
+    return Math.max(0.05, 0.26 - Math.min(Math.max(1, squad), 40) * 0.0045);
   }
 
   function volleyCount(squad) {
-    return clamp(1 + Math.floor((Math.max(1, squad) - 1) / 2), 1, 16);
+    return clamp(Math.max(1, squad | 0), 1, 18);
   }
 
   function bulletDamage(state) {
     var weapon = weaponByIndex(state.weapon);
-    return weapon.mul * Math.max(1, Math.ceil(state.squad / 16));
+    return weapon.mul * Math.max(1, Math.ceil(Math.max(1, state.squad) / 5));
   }
 
   function spawnVolley(state) {
     if (state.squad <= 0 || state.phase !== 'run') return;
     var count = volleyCount(state.squad);
-    var spread = Math.min(1.05, 0.06 + state.squad * 0.018);
+    var spread = Math.min(0.34, 0.08 + count * 0.01);
     var damage = bulletDamage(state);
     var splash = weaponByIndex(state.weapon).splash;
+    var side = pickSide(state.x);
     for (var i = 0; i < count; i++) {
       var t = count === 1 ? 0 : (i / (count - 1) - 0.5);
       state.bullets.push({
         id: state.bulletSeq++,
-        x: state.x,
-        z: state.z + 0.45,
-        vx: t * spread * 7,
-        vz: 28,
+        x: state.x + t * spread,
+        z: state.z + 0.55,
+        vx: t * spread * 4,
+        vz: 32,
         damage: damage,
         splash: splash,
+        side: side,
         alive: true
       });
     }
@@ -277,8 +282,8 @@
       var travelG = Math.max(0.0001, nz - bullet.z);
       var tg = (gate.z - bullet.z) / travelG;
       var gx = bullet.x + (nx - bullet.x) * tg;
-      if (gx < -1.05 || gx > 1.05) continue;
-      marks.push({ z: gate.z, kind: 'gate', gate: gate, side: pickSide(gx), x: gx });
+      if (gx < -1.35 || gx > 1.35) continue;
+      marks.push({ z: gate.z, kind: 'gate', gate: gate, side: bullet.side || pickSide(state.x), x: gx });
     }
     var fin = state.finish;
     if (!fin.used && fin.z > bullet.z && fin.z <= nz + 0.05) {
@@ -347,7 +352,7 @@
     dt = clamp(dt, 0, 0.05);
     state.time += dt;
     var dx = state.targetX - state.x;
-    var maxStep = 3.1 * dt;
+    var maxStep = 16 * dt;
     if (Math.abs(dx) <= maxStep) state.x = state.targetX;
     else state.x += Math.sign(dx) * maxStep;
     state.x = clamp(state.x, -0.86, 0.86);
@@ -480,7 +485,7 @@
       if (i % 2 === 0) {
         var side = rng() < 0.5 ? -1 : 1;
         for (var c = 0; c < 4; c++) {
-          zombies.push({ z: z + c * 2.2, x: side * (1.2 + rng() * 0.2), kind: 'crowd' });
+          zombies.push({ z: z + c * 2.2, x: side * (0.58 + rng() * 0.28), kind: 'crowd' });
         }
       }
       z += 14 + pack;

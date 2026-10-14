@@ -32,6 +32,8 @@
   var viewH = 640;
   var lastLayout = null;
   var pointer = null;
+  var drag = null;
+  var mergeArm = 0;
   var adRetry = null;
   var preview = null;
   var time = 0;
@@ -173,7 +175,9 @@
     screen = 'play';
     pauseBtn.hidden = false;
     overlay.hidden = true;
-    banner('点桶，再点传送带。同色沙才会进去', true);
+    mergeArm = 0;
+    drag = null;
+    banner('拖同色桶到传送带。沙子只进同色桶', true);
   }
 
   function hitTest(p) {
@@ -259,7 +263,8 @@
       if (occupying != null) {
         var bucket = SBCore.bucketById(state, occupying);
         if (selected != null && selected !== occupying && SBCore.canMerge(SBCore.bucketById(state, selected), bucket)) {
-          SBCore.merge(state, selected, occupying);
+          var merged = SBCore.merge(state, selected, occupying);
+          if (!merged.ok) banner('两个满桶都要在传送带上才能合成');
           selected = null;
           return;
         }
@@ -333,27 +338,43 @@
         continue;
       }
       var target = lastLayout ? pickBucket(p) : null;
-      var ease = state.magnetT > 0 ? 12 : 6.5;
+      var ease = state.magnetT > 0 ? 22 : 14;
       if (target) p.x += (target.x - p.x) * Math.min(1, dt * ease);
       else p.x += Math.sin(p.seed + time * 5) * 10 * dt;
-      p.vy = Math.min(760, p.vy + 980 * dt);
-      p.y += p.vy * dt;
-      if (target && p.y >= lastLayout.mouthY && Math.abs(p.x - target.x) < target.slot.w * 0.48) {
-        var caught = SBCore.catchCell(state, target.id, p.cellId);
-        if (caught.ok) {
-          audio.catch(state.combo);
-          burst(p.x, p.y, p.color, 6);
-          if (state.combo >= 2 && state.combo !== lastCombo) showCombo(state.combo);
-          if (state.combo > 0 && state.combo % 10 === 0) {
-            floatAt('连击 x ' + state.combo, viewW / 2, lastLayout.pic.y + 24, 'mega');
-            shake = Math.min(12, shake + 5);
+      var mouth = lastLayout ? lastLayout.mouthY : viewH * 0.55;
+      var beltBottom = lastLayout ? lastLayout.belt.y + lastLayout.belt.h + 28 : viewH;
+      if (target && p.y >= mouth - 4) {
+        var reach = Math.max(22, target.slot.w * 0.7);
+        if (Math.abs(p.x - target.x) <= reach) {
+          var caught = SBCore.catchCell(state, target.id, p.cellId);
+          if (caught.ok) {
+            audio.catch(state.combo);
+            burst(target.x, mouth, p.color, 8);
+            if (state.combo >= 2 && state.combo !== lastCombo) showCombo(state.combo);
+            if (state.combo > 0 && state.combo % 10 === 0) {
+              floatAt('连击 x ' + state.combo, viewW / 2, lastLayout.pic.y + 24, 'mega');
+              shake = Math.min(12, shake + 5);
+            }
+            lastCombo = state.combo;
+            grains.splice(i, 1);
+            continue;
           }
-          lastCombo = state.combo;
-          grains.splice(i, 1);
-          continue;
         }
+        p.y = mouth;
+        p.vy = 30;
+        p.x += (target.x - p.x) * Math.min(1, dt * 20);
+        p.wait = (p.wait || 0) + dt;
+        if (p.wait > 1.5) {
+          SBCore.spillCell(state, p.cellId);
+          lastCombo = 0;
+          showCombo(0);
+          grains.splice(i, 1);
+        }
+        continue;
       }
-      if (lastLayout && p.y > lastLayout.belt.y + lastLayout.belt.h) {
+      p.vy = Math.min(680, p.vy + 860 * dt);
+      p.y += p.vy * dt;
+      if (!target && p.y > beltBottom) {
         SBCore.spillCell(state, p.cellId);
         lastCombo = 0;
         showCombo(0);
@@ -367,6 +388,17 @@
       spark.y += spark.vy * dt;
       spark.vy += 400 * dt;
       if (spark.life <= 0) sparks.splice(s, 1);
+    }
+    if (state.status === 'play') {
+      var pairNow = SBCore.findMergePair(state);
+      if (pairNow) {
+        mergeArm += dt;
+        if (mergeArm >= 0.42) {
+          SBCore.merge(state, pairNow.a, pairNow.b);
+          selected = null;
+          mergeArm = 0;
+        }
+      } else mergeArm = 0;
     }
     if (state.status === 'play' && !grains.length && !state.queue.length && !state.inflight.length) {
       SBCore.settle(state);
@@ -389,7 +421,7 @@
     }
     score.textContent = state.score;
     fill.style.width = Math.min(100, Math.round((state.delivered / state.total) * 100)) + '%';
-    lv.textContent = state.name + '  ·  ' + state.delivered + '/' + state.total;
+    lv.textContent = state.name + '  ·  已填 ' + state.delivered + '/' + state.total;
     spill.textContent = '可洒 ' + state.lost + '/' + state.spillBudget;
   }
 
@@ -398,7 +430,7 @@
     var dt = Math.min(0.033, (ts - lastTs) / 1000);
     lastTs = ts;
     if (bannerUntil !== Infinity && performance.now() > bannerUntil) bannerEl.classList.remove('on');
-    if (screen === 'play' && !taught) banner('点桶，再点传送带。同色沙才会进去', true);
+    if (screen === 'play' && !taught) banner('拖同色桶到传送带。沙子只进同色桶', true);
     update(dt);
     var shown = state || preview;
     if (shown) {
@@ -412,7 +444,8 @@
         shake: shake,
         flash: flash,
         selected: selected,
-        pair: pair
+        pair: pair,
+        drag: drag
       });
       if (pair && screen === 'play') {
         mergeBtn.hidden = false;
@@ -438,7 +471,7 @@
       preview = SBCore.create(currentDef());
       overlay.innerHTML =
         '<div class="sheet"><div class="kicker">SAND</div><h1>拼图解压馆</h1>' +
-        '<p>沙子从图案里掉下来。把同色桶放到传送带上接住，两个同样装满的桶合成之后，图案才会补上。</p>' +
+        '<p>拖同色桶到传送带。沙子只进颜色一样的桶，桶上的数字是还剩多少容量。两个同色同容量的桶装满后合成，图案才会被填上。</p>' +
         '<div class="levels">' + levelButtons() + '</div>' +
         '<button class="go" type="button" data-act="start">开始接沙</button>' +
         '<button class="ghost" type="button" data-act="endless">无尽模式</button></div>';
@@ -525,19 +558,57 @@
     renderOverlay();
   });
 
+  function nearestEmptySlot(p) {
+    if (!lastLayout || !state) return null;
+    var best = null;
+    var bestD = 1e9;
+    for (var i = 0; i < lastLayout.slots.length; i++) {
+      if (state.slots[i] != null) continue;
+      var s = lastLayout.slots[i];
+      var d = Math.hypot(p.x - (s.x + s.w / 2), p.y - (s.y + s.h / 2));
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best == null || bestD > 130) return null;
+    return best;
+  }
+
+  function handBucketAt(p) {
+    if (!lastLayout) return null;
+    for (var h = 0; h < lastLayout.handHits.length; h++) {
+      var item = lastLayout.handHits[h];
+      if (!item.vis) continue;
+      if (p.x >= item.x && p.x <= item.x + item.w && p.y >= item.y && p.y <= item.y + item.h) return item;
+    }
+    return null;
+  }
+
   cv.addEventListener('pointerdown', function (e) {
     if (screen !== 'play') return;
     audio.unlock();
     var p = pos(e);
-    var hand = lastLayout && p.y >= lastLayout.hand.y && p.y <= lastLayout.hand.y + lastLayout.hand.h;
-    pointer = { x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, hand: hand };
-    cv.setPointerCapture(e.pointerId);
+    var item = handBucketAt(p);
+    var emptyHand = lastLayout && !item && p.y >= lastLayout.hand.y && p.y <= lastLayout.hand.y + lastLayout.hand.h;
+    pointer = { x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, scroll: emptyHand, bucket: item };
+    drag = null;
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
   cv.addEventListener('pointermove', function (e) {
-    if (!pointer) return;
+    if (!pointer || !state) return;
     var p = pos(e);
-    if (Math.hypot(p.x - pointer.sx, p.y - pointer.sy) > 8) pointer.moved = true;
-    if (pointer.hand && pointer.moved && lastLayout) {
+    if (Math.hypot(p.x - pointer.sx, p.y - pointer.sy) > 10) pointer.moved = true;
+    if (pointer.bucket && pointer.moved) {
+      var bucket = SBCore.bucketById(state, pointer.bucket.id);
+      drag = {
+        bucket: bucket,
+        id: pointer.bucket.id,
+        x: p.x,
+        y: p.y,
+        w: pointer.bucket.w,
+        h: pointer.bucket.h
+      };
+      return;
+    }
+    if (pointer.scroll && pointer.moved && lastLayout) {
       handScroll = Math.max(0, Math.min(lastLayout.handMax, handScroll - (p.y - pointer.y)));
       pointer.y = p.y;
     }
@@ -546,8 +617,28 @@
     if (!pointer) return;
     var p = pos(e);
     var moved = pointer.moved;
+    var held = pointer.bucket;
     pointer = null;
+    if (drag && held && state) {
+      var slot = nearestEmptySlot(p);
+      if (slot != null && state.hand.indexOf(held.id) >= 0) {
+        var placed = SBCore.place(state, held.id, slot);
+        if (placed.ok) {
+          taught = true;
+          bannerUntil = 0;
+          selected = null;
+          audio.tap();
+        }
+      }
+      drag = null;
+      return;
+    }
+    drag = null;
     if (!moved) tap(p);
+  });
+  cv.addEventListener('pointercancel', function () {
+    pointer = null;
+    drag = null;
   });
 
   window.addEventListener('keydown', function (e) {

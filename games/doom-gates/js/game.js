@@ -103,12 +103,12 @@
     shownSquad = state.squad;
     if (kind === 'win') {
       audio.win();
-      goalEl.textContent = state.finish.name + ' 到手 · ' + state.squad + ' 人';
-      squadLabel.textContent = '武器到手';
+      goalEl.textContent = '通关 · 获得' + state.finish.name;
+      squadLabel.textContent = '小队 ' + state.squad + ' 人过门槛';
     } else {
       audio.lose();
       goalEl.textContent = loseCopy()[0];
-      squadLabel.textContent = '人数 ' + state.squad;
+      squadLabel.textContent = '小队 ' + state.squad + ' 人';
     }
     renderOverlay();
   }
@@ -119,11 +119,13 @@
       var ev = evs[i];
       if (ev.type === 'gate') {
         audio.gate(ev.delta >= 0);
-        floatAt(ev.text, viewW / 2, viewH * 0.42, Math.abs(ev.delta) >= 8 ? 'mega' : 'good');
+        var cls = ev.delta < 0 ? 'bad' : (Math.abs(ev.delta) >= 8 ? 'mega' : 'good');
+        floatAt(ev.text, viewW / 2, viewH * 0.68, cls);
+        floatAt('小队 ' + ev.squad + ' 人', viewW / 2, viewH * 0.76, 'good');
         shake = Math.min(10, shake + 4);
       } else if (ev.type === 'gate-charge') {
         audio.charge();
-        hot[ev.z + ev.side] = 0.25;
+        hot[ev.z + ev.side] = 0.28;
       } else if (ev.type === 'need') {
         audio.charge();
         floatAt('需要 ' + ev.text, viewW / 2, viewH * 0.28, 'mega');
@@ -135,8 +137,7 @@
       } else if (ev.type === 'hit') {
         audio.hit();
       } else if (ev.type === 'kill') {
-        var kp = screenPoint(ev.z, ev.x);
-        floatAt(ev.text, kp.x, kp.y - 20, 'good');
+        floatAt(ev.text, ev.x < 0 ? viewW * 0.3 : viewW * 0.7, viewH * 0.64, 'good');
       } else if (ev.type === 'win') end('win');
       else if (ev.type === 'lose') end('lose');
     }
@@ -151,13 +152,14 @@
       hot[k] -= dt;
       if (hot[k] <= 0) delete hot[k];
     });
-    if (keys.left) state.targetX -= dt * 1.7;
-    if (keys.right) state.targetX += dt * 1.7;
+    if (keys.left) state.targetX -= dt * 3.4;
+    if (keys.right) state.targetX += dt * 3.4;
+    shotCd = Math.max(0, shotCd - dt);
     var before = state.bullets.length;
     DGCore.step(state, dt);
     if (state.bullets.length > before) {
-      shotCd = 0.05;
-      if (Math.random() < 0.35) audio.shot();
+      shotCd = 0.12;
+      if (Math.random() < 0.45) audio.shot();
     }
     state.zombies.forEach(function (zombie) {
       if (zombie._hp == null) zombie._hp = zombie.hp;
@@ -169,16 +171,16 @@
     });
     drain();
     if (screen !== 'play') return;
-    var weapon = DGCore.weaponByIndex(state.weapon);
-    goalEl.textContent = weapon.name + '  ·  终点 ' + state.finish.name + ' 需要 ' + state.finish.need;
+    var volley = DGCore.volleyCount(state.squad);
+    goalEl.textContent = '终点 ' + state.finish.name + ' · 需要 ' + state.finish.need + ' 人 · 火力 ' + volley;
     if (shownSquad !== state.squad) {
-      squadEl.textContent = String(Math.max(0, state.squad));
+      squadEl.textContent = String(Math.max(0, state.squad | 0));
       squadEl.classList.remove('pop');
       void squadEl.offsetWidth;
       squadEl.classList.add('pop');
       shownSquad = state.squad;
     }
-    if (performance.now() > taughtUntil) squadLabel.textContent = '击倒 ' + state.kills;
+    if (performance.now() > taughtUntil) squadLabel.textContent = '火力 ' + volley + ' · 击倒 ' + state.kills;
   }
 
   function frame(ts) {
@@ -189,7 +191,7 @@
     if (state && (screen === 'play' || screen === 'pause')) {
       ctx.save();
       if (shake > 0.5) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
-      DGRender.draw(ctx, DGRender.layout(viewW, viewH), state, { time: time, buildings: buildings, hot: hot });
+      DGRender.draw(ctx, DGRender.layout(viewW, viewH), state, { time: time, buildings: buildings, hot: hot, muzzle: shotCd });
       ctx.restore();
     } else if (screen === 'menu') {
       ctx.fillStyle = '#1b2a44';
@@ -199,9 +201,9 @@
   }
 
   function loseCopy() {
-    if (state.reason === 'zombie') return ['阵亡', '丧尸扑到了小队。人数归零才会失败。'];
-    if (state.reason === 'gate') return ['人数归零', '这扇门把小队减没了。'];
-    return ['武器没拿到', '需要 ' + state.finish.need + ' 人，你只有 ' + state.squad + ' 人。'];
+    if (state.reason === 'zombie') return ['阵亡', '丧尸扑到了小队，人数归零。'];
+    if (state.reason === 'gate') return ['人数归零', '这扇门上的数字把小队减没了。'];
+    return ['没过门槛', '终点武器「' + state.finish.name + '」需要 ' + state.finish.need + ' 人，小队只有 ' + state.squad + ' 人。'];
   }
 
   function renderOverlay() {
@@ -225,8 +227,8 @@
         '<button class="ghost" type="button" data-act="menu">回选关</button></div>';
     } else if (screen === 'win') {
       overlay.innerHTML =
-        '<div class="sheet win"><div class="kicker">WEAPON</div><h1>武器到手</h1>' +
-        '<p>' + state.finish.name + '<br>小队 ' + state.squad + ' 人 · 门槛 ' + state.finish.need + '<br>击倒 ' + state.kills + '</p>' +
+        '<div class="sheet win"><div class="kicker">CLEAR</div><h1>通关</h1>' +
+        '<p>获得终点武器「' + state.finish.name + '」<br>小队 ' + state.squad + ' 人，门槛 ' + state.finish.need + ' 人<br>击倒 ' + state.kills + '</p>' +
         '<div class="row"><button class="go" type="button" data-act="next">下一关</button>' +
         '<button class="ghost" type="button" data-act="retry">再跑</button></div>' +
         '<button class="ghost" type="button" data-act="menu">回选关</button></div>';
@@ -290,7 +292,7 @@
   cv.addEventListener('pointermove', function (e) {
     if (!dragging || !state) return;
     var dx = e.clientX - dragging.x;
-    state.targetX = DGCore.clamp(dragging.target + dx / (dragging.width * 0.34), -0.86, 0.86);
+    state.targetX = DGCore.clamp(dragging.target + dx / (dragging.width * 0.18), -0.86, 0.86);
   });
   cv.addEventListener('pointerup', function () { dragging = null; });
   cv.addEventListener('pointercancel', function () { dragging = null; });

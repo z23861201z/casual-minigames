@@ -35,6 +35,7 @@
   var adRetry = null;
   var bannerUntil = 0;
   var taught = false;
+  var aimCol = -1;
 
   function currentDef() {
     if (choice.endless) {
@@ -112,10 +113,10 @@
       drops.push({
         x: x + (Math.random() - 0.5) * cell,
         y: y,
-        vx: (Math.random() - 0.5) * 160,
-        vy: 40 + Math.random() * 120,
-        r: 2 + Math.random() * 3.4,
-        life: 0.9,
+        vx: (Math.random() - 0.5) * 220,
+        vy: 30 + Math.random() * 160,
+        r: 2.6 + Math.random() * 4.2,
+        life: 1.35,
         color: palColor(color)
       });
     }
@@ -174,43 +175,71 @@
   }
 
   function beginShot(col) {
-    if (!launcher || anim) return;
-    if (!DPCore.canShoot(state.grid, col, launcher.color)) {
+    if (!launcher || anim || !state) return;
+    var duck = duckById(launcher.id);
+    if (!duck || duck.ammo <= 0) {
+      launcher = state.ducks[0] || null;
       audio.bad();
-      banner('这一列被别的颜色挡住了');
+      banner('这只鸭子没有弹药了');
       return;
     }
-    var plan = DPCore.planShot(state.grid, col, launcher.color, launcher.ammo);
-    if (!plan.hits.length) {
+    if (!DPCore.canShoot(state.grid, col, duck.color)) {
       audio.bad();
+      banner('只打同色。这一列最底下不是这只鸭子的颜色');
       return;
+    }
+    var old = [];
+    for (var r = 0; r < state.rows; r++) old.push(state.grid[r][col]);
+    var res = DPCore.fire(state, duck.id, col);
+    if (!res.ok || !res.hits.length) {
+      audio.bad();
+      banner('这一列打不了');
+      return;
+    }
+    for (var h = 0; h < res.hits.length; h++) {
+      if (res.hits[h].color !== duck.color) {
+        audio.bad();
+        return;
+      }
     }
     taught = true;
-    anim = {
-      t: 0,
-      dur: (0.16 + plan.hits.length * 0.045) / speed,
-      hits: plan.hits,
-      cursor: 0,
-      col: col,
-      color: launcher.color,
-      duckId: launcher.id
-    };
     audio.shot();
-  }
-
-  function finishShot() {
-    var shot = anim;
-    anim = null;
-    var res = DPCore.fire(state, shot.duckId, shot.col);
-    lastShot = performance.now();
-    if (!res.ok) return;
-    floatAt('+' + res.n, lastLayout.grid.x + (shot.col + 0.5) * lastLayout.grid.cell, lastLayout.grid.y + 16, res.n >= 8);
+    var hitSet = {};
+    for (var i = 0; i < res.hits.length; i++) {
+      if (res.hits[i].color !== duck.color) continue;
+      hitSet[res.hits[i].r] = true;
+      spawnDrops(res.hits[i].r, res.hits[i].c, res.hits[i].color, 14);
+    }
+    var fromBottom = [];
+    for (var r2 = old.length - 1; r2 >= 0; r2--) {
+      if (old[r2] == null || hitSet[r2]) continue;
+      fromBottom.push(r2);
+    }
+    var toBottom = [];
+    for (var r3 = state.rows - 1; r3 >= 0; r3--) {
+      if (state.grid[r3][col] != null) toBottom.push(r3);
+    }
+    var falls = [];
+    for (var f = 0; f < fromBottom.length && f < toBottom.length; f++) {
+      if (fromBottom[f] !== toBottom[f]) {
+        falls.push({ c: col, fromR: fromBottom[f], toR: toBottom[f], color: state.grid[toBottom[f]][col] });
+      }
+    }
+    if (lastLayout) {
+      floatAt('+' + res.n + '  弹药 ' + res.ammoLeft, lastLayout.grid.x + (col + 0.5) * lastLayout.grid.cell, lastLayout.grid.y + 16, res.n >= 8);
+    }
     showCombo(state.chain);
     if (res.n >= 8) shake = Math.min(12, shake + 6);
-    launcher = duckById(shot.duckId) || state.ducks[0] || null;
-    if (state.status === 'win') end('win');
-    else if (state.status === 'lose') end('lose');
-    else if (!DPCore.hasMove(state)) banner(state.clears || state.shuffles ? '没有可打的列了，用清除或打乱' : '无路可走');
+    launcher = duckById(duck.id) || state.ducks[0] || null;
+    lastShot = performance.now();
+    anim = {
+      t: 0,
+      dur: Math.max(0.24, (0.2 + res.n * 0.04) / speed),
+      falls: falls,
+      col: col,
+      color: duck.color,
+      pending: state.status === 'win' ? 'win' : (state.status === 'lose' ? 'lose' : null)
+    };
   }
 
   function openAd(tool, retry) {
@@ -258,17 +287,19 @@
     if (screen !== 'play' || !state) return;
     time += dt;
     shake *= Math.pow(0.04, dt);
+    if (launcher) {
+      var live = duckById(launcher.id);
+      launcher = live || state.ducks[0] || null;
+    }
     var step = dt * speed;
     if (anim) {
       anim.t += step;
-      var need = Math.min(anim.hits.length, Math.floor((anim.t / anim.dur) * anim.hits.length));
-      while (anim.cursor < need) {
-        var hit = anim.hits[anim.cursor];
-        spawnDrops(hit.r, hit.c, hit.color, 8);
-        audio.pop(anim.cursor);
-        anim.cursor++;
+      if (anim.t >= anim.dur) {
+        var pending = anim.pending;
+        anim = null;
+        if (pending) end(pending);
+        else if (!DPCore.hasMove(state)) banner(state.clears || state.shuffles ? '没有可打的列了，用清除或打乱' : '无路可走');
       }
-      if (anim.t >= anim.dur) finishShot();
     } else if (lastShot && performance.now() - lastShot > 2200 && state.chain) {
       DPCore.breakChain(state);
       showCombo(0);
@@ -281,10 +312,10 @@
       drop.y += drop.vy * step;
       if (drop.y > floorY) {
         drop.y = floorY;
-        drop.vy *= -0.28;
-        drop.vx *= 0.7;
-        drop.life -= step * 1.6;
-      } else drop.life -= step * 0.35;
+        drop.vy *= -0.22;
+        drop.vx *= 0.72;
+        drop.life -= step * 0.7;
+      } else drop.life -= step * 0.18;
       if (drop.life <= 0) drops.splice(i, 1);
     }
     if (!taught && screen === 'play') {
@@ -301,15 +332,17 @@
     update(dt);
     var shown = state || preview;
     if (shown) {
-      lastLayout = DPRender.layout(viewW, viewH, shown, duckScroll);
+      lastLayout = DPRender.layout(viewW, viewH, shown, duckScroll, screen === 'play' && launcher ? launcher.id : null);
       duckScroll = lastLayout.duckScroll;
       var aim = null;
-      if (screen === 'play' && launcher && !clearMode) aim = { color: launcher.color, hover: -1 };
+      if (screen === 'play' && launcher && !clearMode) aim = { color: launcher.color, hover: aimCol };
       DPRender.draw(ctx, lastLayout, shown, {
         time: time,
         drops: screen === 'play' ? drops : [],
         shake: shake,
-        anim: screen === 'play' ? anim : null,
+        falls: screen === 'play' && anim ? anim.falls : null,
+        fallU: screen === 'play' && anim ? Math.min(1, anim.t / anim.dur) : 1,
+        speed: speed,
         launcher: screen === 'play' ? launcher : null,
         aim: aim
       });
@@ -403,19 +436,20 @@
 
   tools.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-act]');
-    if (!btn || screen !== 'play' || !state || anim) return;
+    if (!btn || screen !== 'play' || !state) return;
     audio.unlock();
     var act = btn.getAttribute('data-act');
+    if (act !== 'speed' && anim) return;
     if (act === 'speed') {
       speed = speed === 2 ? 1 : 2;
-      banner(speed === 2 ? '两倍速' : '原速');
+      banner(speed === 2 ? '两倍速开了' : '回到原速');
     } else if (act === 'upgrade') {
       if (!launcher) { banner('先点一只鸭子'); return; }
       var up = DPCore.upgrade(state, launcher.id);
       if (!up.ok) openAd('star', function () { DPCore.upgrade(state, launcher.id); });
       else { audio.pop(8); banner('弹药 +5'); }
     } else if (act === 'clear') {
-      if (state.clears <= 0) openAd('clear', function () { state.clears += 0; });
+      if (state.clears <= 0) openAd('clear', function () { clearMode = true; banner('点一个方块把它清掉'); });
       else {
         clearMode = !clearMode;
         banner(clearMode ? '点一个方块把它清掉' : '取消清除');
@@ -435,18 +469,34 @@
     renderOverlay();
   });
 
+  function columnAt(p) {
+    if (!lastLayout || !state) return -1;
+    var g = lastLayout.grid;
+    if (p.x < g.x || p.x > g.x + g.w || p.y < g.y || p.y > g.y + g.h) return -1;
+    return Math.max(0, Math.min(state.cols - 1, Math.floor((p.x - g.x) / g.cell)));
+  }
+
   cv.addEventListener('pointerdown', function (e) {
     if (screen !== 'play') return;
     audio.unlock();
     var p = pos(e);
-    var band = lastLayout && p.y >= lastLayout.duckBand.y && p.y <= lastLayout.duckBand.y + lastLayout.duckBand.h;
+    aimCol = columnAt(p);
+    var onDuck = false;
+    if (lastLayout) {
+      for (var i = 0; i < lastLayout.ducks.length; i++) {
+        var d = lastLayout.ducks[i];
+        if (p.x >= d.x && p.x <= d.x + d.w && p.y >= d.y - 8 && p.y <= d.y + d.h) onDuck = true;
+      }
+    }
+    var band = !onDuck && lastLayout && p.y >= lastLayout.duckBand.y && p.y <= lastLayout.duckBand.y + lastLayout.duckBand.h;
     pointer = { x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false, band: band };
     try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
   cv.addEventListener('pointermove', function (e) {
     if (!pointer || !lastLayout) return;
     var p = pos(e);
-    if (Math.hypot(p.x - pointer.sx, p.y - pointer.sy) > 8) pointer.moved = true;
+    aimCol = columnAt(p);
+    if (Math.hypot(p.x - pointer.sx, p.y - pointer.sy) > 12) pointer.moved = true;
     if (pointer.band && pointer.moved) {
       duckScroll = Math.max(0, Math.min(lastLayout.duckMax, duckScroll - (p.x - pointer.x)));
       pointer.x = p.x;

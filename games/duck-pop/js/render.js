@@ -30,11 +30,11 @@
     ctx.closePath();
   }
 
-  function layout(w, h, state, duckScroll) {
+  function layout(w, h, state, duckScroll, launcherId) {
     var hud = 62;
-    var tools = 74;
-    var duckH = 92;
-    var launchH = 64;
+    var tools = 78;
+    var duckH = 86;
+    var launchH = 78;
     var gridTop = hud + 8;
     var gridBottom = h - tools - duckH - launchH;
     var gridH = Math.max(120, gridBottom - gridTop);
@@ -42,15 +42,20 @@
     var gw = cell * state.cols;
     var gh = cell * state.rows;
     var grid = { x: (w - gw) / 2, y: gridTop + (gridH - gh) / 2, cell: cell, w: gw, h: gh };
-    var launch = { x: w / 2, y: grid.y + gh + 34, r: 28 };
-    var duckY = launch.y + 36;
+    var launch = { x: w / 2, y: grid.y + gh + 46, r: 28 };
+    var duckY = launch.y + 42;
     var duckW = 64;
     var gap = 8;
-    var content = state.ducks.length * (duckW + gap);
+    var roster = [];
+    for (var di = 0; di < state.ducks.length; di++) {
+      if (launcherId != null && state.ducks[di].id === launcherId) continue;
+      roster.push(state.ducks[di]);
+    }
+    var content = roster.length * (duckW + gap);
     var maxScroll = Math.max(0, content - (w - 16));
     var scroll = Math.max(0, Math.min(maxScroll, duckScroll || 0));
     var start = 12 - scroll;
-    var ducks = state.ducks.map(function (duck, i) {
+    var ducks = roster.map(function (duck, i) {
       return { id: duck.id, x: start + i * (duckW + gap), y: duckY, w: duckW, h: 70 };
     });
     return {
@@ -117,14 +122,22 @@
       ctx.fill();
     }
     ctx.restore();
-    ctx.fillStyle = '#1b2430';
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 4;
+    if (ammo === '' || ammo == null) return;
+    var label = String(ammo);
     ctx.font = '900 ' + Math.max(16, Math.floor(s * 0.34)) + 'px ' + FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.strokeText(String(ammo), x + s / 2, y + s * 0.78);
-    ctx.fillText(String(ammo), x + s / 2, y + s * 0.78);
+    var tw = Math.max(18, ctx.measureText(label).width);
+    var bx = x + s / 2 - tw / 2 - 7;
+    var by = y + s * 0.66;
+    roundRect(ctx, bx, by, tw + 14, Math.max(20, s * 0.28), 8);
+    ctx.fillStyle = 'rgba(16, 20, 32, .88)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, x + s / 2, by + Math.max(20, s * 0.28) / 2 + 1);
   }
 
   function draw(ctx, L, state, fx) {
@@ -152,17 +165,15 @@
     ctx.strokeStyle = 'rgba(255,255,255,.9)';
     ctx.stroke();
 
-    var hidden = {};
-    if (fx.anim) {
-      for (var a = 0; a < fx.anim.cursor; a++) {
-        var hit = fx.anim.hits[a];
-        hidden[hit.r + ',' + hit.c] = true;
-      }
+    var falling = {};
+    var fallU = fx.fallU == null ? 1 : fx.fallU;
+    if (fx.falls) {
+      for (var fi = 0; fi < fx.falls.length; fi++) falling[fx.falls[fi].toR + ',' + fx.falls[fi].c] = fx.falls[fi];
     }
     for (var r = 0; r < state.rows; r++) {
       for (var c = 0; c < state.cols; c++) {
         var v = state.grid[r][c];
-        if (v == null || hidden[r + ',' + c]) continue;
+        if (v == null || falling[r + ',' + c]) continue;
         var x = L.grid.x + c * L.grid.cell;
         var y = L.grid.y + r * L.grid.cell;
         if (fx.aim && fx.aim.color != null) {
@@ -178,23 +189,40 @@
         drawCube(ctx, x + 1, y + 1, L.grid.cell - 2, v);
       }
     }
+    if (fx.falls) {
+      for (var fj = 0; fj < fx.falls.length; fj++) {
+        var fall = fx.falls[fj];
+        var fr = fall.fromR + (fall.toR - fall.fromR) * fallU;
+        var fx0 = L.grid.x + fall.c * L.grid.cell;
+        var fy0 = L.grid.y + fr * L.grid.cell;
+        drawCube(ctx, fx0 + 1, fy0 + 1, L.grid.cell - 2, fall.color);
+      }
+    }
 
     ctx.fillStyle = 'rgba(255,255,255,.8)';
     ctx.beginPath();
-    ctx.ellipse(L.launch.x, L.launch.y + 8, 34, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(L.launch.x, L.launch.y + 8, 40, 12, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#607086';
+    ctx.font = '800 11px ' + FONT;
+    ctx.textAlign = 'center';
+    ctx.fillText('发射台', L.launch.x, L.launch.y + 28);
     if (fx.launcher) {
-      var bob = Math.sin(fx.time * 6) * 3;
-      drawDuck(ctx, L.launch.x - 30, L.launch.y - 58 + bob, 60, fx.launcher.color, fx.launcher.ammo, true);
+      var bob = Math.sin(fx.time * (fx.speed === 2 ? 12 : 6)) * 3;
+      drawDuck(ctx, L.launch.x - 24, L.launch.y - 40 + bob, 48, fx.launcher.color, fx.launcher.ammo, true);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,.7)';
+      roundRect(ctx, L.launch.x - 28, L.launch.y - 48, 56, 44, 12);
+      ctx.fill();
+      ctx.fillStyle = '#607086';
+      ctx.font = '800 12px ' + FONT;
+      ctx.fillText('选鸭子', L.launch.x, L.launch.y - 26);
     }
-
-    if (fx.anim) {
-      var u = Math.min(1, fx.anim.t / fx.anim.dur);
-      var fromY = L.launch.y - 20;
-      var toY = L.grid.y - 8;
-      var dy = fromY + (toY - fromY) * u;
-      var dx = L.grid.x + (fx.anim.col + 0.5) * L.grid.cell - 16;
-      drawDuck(ctx, dx, dy, 32, fx.anim.color, '', false);
+    if (fx.speed === 2) {
+      ctx.font = '900 18px ' + FONT;
+      ctx.fillStyle = '#e07b00';
+      ctx.textAlign = 'left';
+      ctx.fillText('x2', 12, L.grid.y + 18);
     }
 
     ctx.save();

@@ -25,7 +25,7 @@
         { z: 88, left: { type: 'add', n: 10 }, right: { type: 'add', n: 2 } }
       ],
       zombies: Z([
-        [18, 1.28, 'crowd'], [21, 1.4, 'crowd'], [24, 1.22, 'crowd'], [28, 1.36, 'crowd'],
+        [18, 0.78, 'crowd'], [21, 0.9, 'crowd'], [24, 0.68, 'crowd'], [28, 0.84, 'crowd'],
         [26, -0.4, 'walker'], [27.2, 0.05, 'walker'], [26.4, 0.42, 'walker'],
         [48, -0.48, 'walker'], [49, -0.1, 'walker'], [48.4, 0.28, 'walker'], [50, 0.52, 'brute'],
         [76, -0.36, 'walker'], [77, 0.08, 'walker'], [76.5, 0.46, 'walker'],
@@ -48,7 +48,7 @@
       ],
       zombies: Z([
         [22, -0.3, 'walker'], [23, 0.15, 'walker'], [24, 0.45, 'walker'], [25, -0.55, 'walker'],
-        [20, -1.32, 'crowd'], [23, -1.4, 'crowd'], [27, -1.25, 'crowd'],
+        [20, -0.78, 'crowd'], [23, -0.9, 'crowd'], [27, -0.66, 'crowd'],
         [46, 0, 'brute'], [47, -0.4, 'walker'], [47.5, 0.4, 'walker'],
         [70, -0.2, 'walker'], [71, 0.2, 'brute'], [72, 0.55, 'walker'], [69, -0.55, 'walker'],
         [96, 0.1, 'brute'], [97, -0.35, 'walker'], [98, 0.4, 'walker'], [99, 0, 'walker'],

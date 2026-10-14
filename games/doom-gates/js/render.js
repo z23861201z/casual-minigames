@@ -34,14 +34,27 @@
 
   function project(L, state, x, z) {
     var depth = z - state.z + 0.15;
-    if (depth < 0.85) return null;
-    var k = L.focal / depth;
+    if (depth < 0.22) return null;
+    var k = L.focal / Math.max(0.22, depth);
     return {
       sx: L.cx + x * k * L.spread,
       sy: L.horizon + k * L.pitch,
       k: k,
       depth: depth
     };
+  }
+
+  function pairLayout(L, state, z) {
+    var depth = z - state.z + 0.15;
+    if (depth < 0.45 || depth > 26) return null;
+    var origin = project(L, state, 0, z);
+    if (!origin) return null;
+    var near = DGCore.clamp((26 - depth) / 18, 0, 1);
+    var span = Math.min(L.w * 0.92, 108 + near * L.w * 0.48);
+    var gap = 12;
+    var sw = (span - gap) / 2;
+    var sh = Math.max(44, Math.min(L.h * 0.22, sw * 0.72));
+    return { sy: origin.sy, sw: sw, sh: sh, gap: gap, depth: depth, span: span };
   }
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -151,37 +164,42 @@
     ctx.restore();
   }
 
-  function drawGatePanel(ctx, proj, side, gate, hot) {
+  function drawGatePanel(ctx, rect, side, gate, opts) {
+    opts = opts || {};
     var style = gateStyle(gate, side);
-    var sw = Math.max(22, proj.k * 0.34);
-    var sh = sw * 0.92;
-    var x = proj.sx - sw / 2;
-    var y = proj.sy - sh;
+    var x = rect.x;
+    var y = rect.y;
+    var sw = rect.w;
+    var sh = rect.h;
     ctx.save();
-    ctx.fillStyle = '#d9dee7';
-    ctx.fillRect(x - 4, y, 6, sh + 10);
-    ctx.fillRect(x + sw - 2, y, 6, sh + 10);
+    ctx.fillStyle = '#e8edf4';
+    ctx.fillRect(x - 5, y, 8, sh + 14);
+    ctx.fillRect(x + sw - 3, y, 8, sh + 14);
     ctx.fillStyle = '#9aa3b2';
-    ctx.fillRect(x - 2, y - 8, 8, 14);
-    ctx.fillRect(x + sw - 4, y - 8, 8, 14);
-    roundRect(ctx, x, y, sw, sh, 8);
+    ctx.fillRect(x - 3, y - 10, 10, 16);
+    ctx.fillRect(x + sw - 6, y - 10, 10, 16);
+    roundRect(ctx, x, y, sw, sh, 10);
     ctx.fillStyle = style.bg;
     ctx.fill();
-    ctx.strokeStyle = hot ? '#fff' : style.edge;
-    ctx.lineWidth = hot ? 4 : 3;
+    ctx.strokeStyle = opts.hot ? '#fff' : (opts.aimed ? '#ffffff' : style.edge);
+    ctx.lineWidth = opts.hot ? 6 : (opts.aimed ? 5 : 3);
     ctx.stroke();
+    if (!opts.aimed) {
+      ctx.fillStyle = 'rgba(0,0,0,.12)';
+      ctx.fillRect(x, y, sw, sh);
+    }
     ctx.fillStyle = 'rgba(255,255,255,.28)';
-    ctx.fillRect(x + 4, y + 4, sw - 8, sh * 0.18);
-    var font = Math.max(12, Math.min(78, sh * 0.5));
+    ctx.fillRect(x + 6, y + 6, sw - 12, sh * 0.16);
+    var font = Math.max(22, Math.min(84, sh * 0.52));
     ctx.font = '900 ' + font + 'px ' + FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineWidth = Math.max(3, font * 0.08);
-    ctx.strokeStyle = 'rgba(0,0,0,.35)';
+    ctx.lineWidth = Math.max(4, font * 0.1);
+    ctx.strokeStyle = 'rgba(0,0,0,.45)';
     ctx.fillStyle = style.fg;
     var text = DGCore.label(gate);
-    ctx.strokeText(text, proj.sx, y + sh * 0.58);
-    ctx.fillText(text, proj.sx, y + sh * 0.58);
+    ctx.strokeText(text, x + sw / 2, y + sh * 0.56);
+    ctx.fillText(text, x + sw / 2, y + sh * 0.56);
     ctx.restore();
   }
 
@@ -253,73 +271,133 @@
     }
 
     var marks = [];
+    var leadGate = null;
+    state.gates.forEach(function (gate) {
+      if (gate.used) return;
+      var box = pairLayout(L, state, gate.z);
+      if (!box) return;
+      if (!leadGate || box.depth < leadGate.depth) leadGate = box;
+    });
     state.zombies.forEach(function (zombie) {
       if (!zombie.alive) return;
-      var p = project(L, state, zombie.x, zombie.z);
-      if (!p || p.depth > 62) return;
+      var drawX = DGCore.clamp(zombie.x, -0.92, 0.92);
+      var p = project(L, state, drawX, zombie.z);
+      if (!p || p.depth > 48) return;
       marks.push({ z: zombie.z, draw: function () {
-        var size = Math.max(28, p.k * (zombie.kind === 'brute' ? 0.62 : 0.5));
-        if (!zombie.collide) size *= 0.82;
-        drawZombieSprite(ctx, p.sx, p.sy, size, zombie.kind === 'crowd' ? 'walker' : zombie.kind, zombie.flash || 0);
-        if (zombie.hp < zombie.maxHp && zombie.collide) {
-          var bw = size * 0.7;
-          ctx.fillStyle = 'rgba(0,0,0,.45)';
-          ctx.fillRect(p.sx - bw / 2, p.sy - size * 1.35, bw, 4);
+        var sideSign = drawX < 0 ? -1 : 1;
+        var inFront = !leadGate || p.depth <= leadGate.depth + 0.35;
+        var size;
+        var sx;
+        var sy;
+        var jitter = ((Math.round(zombie.z * 10) % 5) - 2) * L.w * 0.02;
+        if (inFront) {
+          var near = DGCore.clamp((9 - p.depth) / 7, 0, 1);
+          size = (zombie.kind === 'brute' ? 72 : 56) + near * (zombie.kind === 'brute' ? 48 : 36);
+          var spriteUp = size * 1.22;
+          var gateBottom = leadGate ? Math.min(leadGate.sy, L.h * 0.58) : L.h * 0.42;
+          var room = L.h * 0.76 - gateBottom - 8;
+          if (spriteUp > room) {
+            size = Math.max(42, (room - 4) / 1.22);
+            spriteUp = size * 1.22;
+          }
+          var drop = leadGate ? DGCore.clamp((leadGate.depth - p.depth) / 12, 0, 1) : 1;
+          sy = Math.min(L.h * 0.76, gateBottom + spriteUp + 4 + drop * Math.max(0, room - spriteUp));
+          var laneMag = Math.min(L.w * 0.34, Math.max(L.w * 0.16, Math.abs(drawX) * L.w * 0.36));
+          sx = L.cx + sideSign * laneMag + jitter;
+        } else {
+          size = zombie.kind === 'brute' ? 38 : 30;
+          var gateTop = Math.min(leadGate.sy, L.h * 0.58) - leadGate.sh;
+          sx = L.cx + sideSign * Math.min(L.w * 0.46, Math.max(L.w * 0.38, Math.abs(p.sx - L.cx))) + jitter;
+          sy = Math.min(gateTop - 4, Math.max(L.horizon + 32, p.sy));
+        }
+        ctx.fillStyle = 'rgba(0,0,0,.28)';
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + 4, size * 0.34, size * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        drawZombieSprite(ctx, sx, sy, size, zombie.kind === 'crowd' ? 'walker' : zombie.kind, zombie.flash || 0);
+        if (zombie.hp < zombie.maxHp) {
+          var bw = Math.max(28, size * 0.7);
+          var by = sy - size * 1.42;
+          ctx.fillStyle = 'rgba(0,0,0,.55)';
+          ctx.fillRect(sx - bw / 2, by, bw, 6);
           ctx.fillStyle = '#ef4444';
-          ctx.fillRect(p.sx - bw / 2, p.sy - size * 1.35, bw * Math.max(0, zombie.hp / zombie.maxHp), 4);
+          ctx.fillRect(sx - bw / 2, by, bw * Math.max(0, zombie.hp / zombie.maxHp), 6);
         }
       } });
     });
 
+    var aimedRight = state.x >= 0;
     state.gates.forEach(function (gate) {
       if (gate.used) return;
+      var box = pairLayout(L, state, gate.z);
+      if (!box) return;
       ['left', 'right'].forEach(function (side) {
-        var gz = project(L, state, side === 'left' ? -0.5 : 0.5, gate.z);
-        if (!gz || gz.depth > 60) return;
+        var x = side === 'left' ? (L.cx - box.gap / 2 - box.sw) : (L.cx + box.gap / 2);
+        var aimed = side === 'right' ? aimedRight : !aimedRight;
         var hot = fx.hot && fx.hot[gate.z + side];
-        marks.push({ z: gate.z, draw: function () { drawGatePanel(ctx, gz, side, gate[side], hot); } });
+        var top = Math.min(box.sy, L.h * 0.58) - box.sh;
+        marks.push({
+          z: gate.z,
+          draw: function () {
+            drawGatePanel(ctx, { x: x, y: top, w: box.sw, h: box.sh }, side, gate[side], { hot: !!hot, aimed: aimed });
+          }
+        });
       });
     });
 
     if (!state.finish.used) {
-      var fp = project(L, state, 0, state.finish.z);
-      if (fp && fp.depth < 70) {
+      var fin = pairLayout(L, state, state.finish.z);
+      if (fin) {
         marks.push({ z: state.finish.z, draw: function () {
-          var sw = Math.max(70, fp.k * 0.85);
-          var sh = sw * 0.7;
-          var x = fp.sx - sw / 2;
-          var y = fp.sy - sh;
+          var sw = fin.span;
+          var sh = Math.max(fin.sh, 64);
+          var x = L.cx - sw / 2;
+          var y = Math.min(fin.sy, L.h * 0.5) - sh;
           ctx.fillStyle = '#f5c542';
-          roundRect(ctx, x, y, sw * 0.42, sh, 8);
+          roundRect(ctx, x, y, sw * 0.46, sh, 10);
           ctx.fill();
-          roundRect(ctx, x + sw * 0.58, y, sw * 0.42, sh, 8);
+          roundRect(ctx, x + sw * 0.54, y, sw * 0.46, sh, 10);
           ctx.fill();
           ctx.fillStyle = '#fff';
-          var font = Math.max(26, Math.min(84, sh * 0.48));
+          var font = Math.max(28, Math.min(86, sh * 0.5));
           ctx.font = '900 ' + font + 'px ' + FONT;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.lineWidth = 6;
           ctx.strokeStyle = '#7c5a00';
-          ctx.strokeText(String(state.finish.need), fp.sx, y + sh * 0.48);
-          ctx.fillText(String(state.finish.need), fp.sx, y + sh * 0.48);
-          ctx.font = '800 ' + Math.max(12, font * 0.28) + 'px ' + FONT;
+          var needText = String(state.finish.need);
+          ctx.strokeText(needText, L.cx, y + sh * 0.48);
+          ctx.fillText(needText, L.cx, y + sh * 0.48);
+          ctx.font = '800 ' + Math.max(13, font * 0.28) + 'px ' + FONT;
           ctx.fillStyle = '#3a2a00';
-          ctx.fillText(state.finish.name, fp.sx, y - 8);
-          ctx.fillText('需要', fp.sx, y + sh + Math.max(12, font * 0.2));
+          ctx.fillText(state.finish.name, L.cx, y - 10);
+          ctx.fillText('需要人数', L.cx, y + sh + 16);
         } });
       }
     }
 
     state.bullets.forEach(function (bullet) {
-      var p = project(L, state, bullet.x, bullet.z);
-      if (!p) return;
+      var p = project(L, state, DGCore.clamp(bullet.x, -0.95, 0.95), bullet.z);
+      if (!p || p.depth > 28) return;
       marks.push({ z: bullet.z, draw: function () {
-        ctx.strokeStyle = state.weapon >= 4 ? '#ffb703' : '#fff4c2';
-        ctx.lineWidth = Math.max(2, p.k * 0.02);
+        var side = bullet.side === 'left' ? -1 : 1;
+        var travel = DGCore.clamp((p.depth - 0.35) / 18, 0, 0.62);
+        var lane0 = state.x < 0
+          ? DGCore.clamp(state.x / 0.86, -1, -0.18)
+          : DGCore.clamp(state.x / 0.86, 0.18, 1);
+        var originX = L.cx + lane0 * Math.min(128, L.w * 0.28);
+        var originY = L.h - 150;
+        var aimX = L.cx + side * Math.min(L.w * 0.16, 52);
+        var aimY = L.h * 0.5;
+        var spread = (bullet.x - state.x) * Math.min(90, L.w * 0.16);
+        var sx = originX + (aimX - originX) * travel + spread;
+        var sy = originY + (aimY - originY) * travel;
+        var thick = state.squad >= 8 ? 3 : 2;
+        ctx.strokeStyle = state.squad >= 8 || state.weapon >= 3 ? '#ffb703' : '#fff6c2';
+        ctx.lineWidth = thick;
         ctx.beginPath();
-        ctx.moveTo(p.sx, p.sy);
-        ctx.lineTo(p.sx - bullet.vx * 0.4, p.sy + 10);
+        ctx.moveTo(sx - side * 3, sy + 12);
+        ctx.lineTo(sx + side * 5, sy - 10);
         ctx.stroke();
       } });
     });
@@ -327,33 +405,42 @@
     marks.sort(function (a, b) { return b.z - a.z; });
     marks.forEach(function (m) { m.draw(); });
 
-    var squad = Math.max(0, state.squad);
-    var vis = Math.min(squad, 16);
-    var cols = Math.min(8, Math.max(1, Math.ceil(Math.sqrt(vis || 1))));
-    var size = vis <= 1 ? 92 : vis < 6 ? 70 : 54;
+    var squad = Math.max(0, state.squad | 0);
+    var vis = Math.min(squad, 8);
+    var lane = state.x < 0
+      ? DGCore.clamp(state.x / 0.86, -1, -0.18)
+      : DGCore.clamp(state.x / 0.86, 0.18, 1);
+    var baseX = L.cx + lane * Math.min(128, L.w * 0.28);
+    var cols = vis <= 3 ? Math.max(1, vis) : 4;
+    var size = vis <= 1 ? 108 : vis <= 4 ? 76 : 58;
     for (var i = 0; i < vis; i++) {
       var col = i % cols;
       var row = Math.floor(i / cols);
-      var sx = L.cx + (col - (Math.min(cols, vis) - 1) / 2) * (size * 0.62);
-      var sy = h - 70 - row * (size * 0.42) + Math.sin(fx.time * 12 + i) * 2;
+      var sx = baseX + (col - (cols - 1) / 2) * (size * 0.92);
+      var sy = h - 108 - row * (size * 0.72) + Math.sin(fx.time * 12 + i) * 2;
       drawSoldier(ctx, sx, sy, size, Math.floor(fx.time * 8) + i);
+      if (fx.muzzle > 0) {
+        ctx.strokeStyle = 'rgba(255, 236, 160, ' + Math.min(1, fx.muzzle * 8) + ')';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(sx + size * 0.2, sy - size * 0.5);
+        ctx.lineTo(sx + size * 0.2, sy - size * 0.95);
+        ctx.stroke();
+      }
     }
     if (squad > vis) {
       ctx.font = '900 18px ' + FONT;
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.fillText('+' + (squad - vis), L.cx, h - 18);
+      ctx.fillText('+' + (squad - vis), baseX, h - 24);
     }
 
-    var marker = project(L, state, state.targetX, state.z + 2.2);
-    if (marker) {
-      ctx.fillStyle = 'rgba(255,255,255,.85)';
-      ctx.beginPath();
-      ctx.moveTo(marker.sx, marker.sy);
-      ctx.lineTo(marker.sx - 8, marker.sy + 12);
-      ctx.lineTo(marker.sx + 8, marker.sy + 12);
-      ctx.fill();
-    }
+    ctx.fillStyle = aimedRight ? 'rgba(73,198,255,.95)' : 'rgba(255,225,74,.95)';
+    ctx.beginPath();
+    ctx.moveTo(baseX, h * 0.78);
+    ctx.lineTo(baseX - 11, h * 0.78 + 16);
+    ctx.lineTo(baseX + 11, h * 0.78 + 16);
+    ctx.fill();
   }
 
   global.DGRender = { load: load, layout: layout, project: project, draw: draw };
