@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>设计评审图库 · 三款超休闲</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --bg2: #171b2e;
+      --card: #1e2440;
+      --card-hover: #262d4d;
+      --text: #f2f4ff;
+      --muted: #9aa3c7;
+      --line: rgba(255, 255, 255, 0.08);
+      --sand: #f6a5c0;
+      --sand2: #ffd6e7;
+      --duck: #ffe08a;
+      --duck2: #7ec8ff;
+      --doom: #7cffb2;
+      --doom2: #ff6b6b;
+      --accent: #8b7cff;
+      --radius: 16px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(139, 124, 255, 0.25), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(246, 165, 192, 0.18), transparent 55%),
+        radial-gradient(800px 400px at 50% 100%, rgba(124, 255, 178, 0.1), transparent 50%),
+        var(--bg);
+      line-height: 1.55;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .wrap {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 64px;
+    }
+
+    header.hero {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 4px);
+      background: linear-gradient(145deg, rgba(30, 36, 64, 0.95), rgba(23, 27, 46, 0.9));
+      box-shadow: var(--shadow);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+    }
+
+    .badge i {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--doom);
+      box-shadow: 0 0 10px var(--doom);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 4vw, 2.15rem);
+      font-weight: 750;
+      letter-spacing: 0.02em;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      max-width: 46em;
+      font-size: 0.98rem;
+    }
+
+    .doc-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .doc-links a {
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(139, 124, 255, 0.18);
+      border: 1px solid rgba(139, 124, 255, 0.35);
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .doc-links a:hover,
+    .doc-links a:focus-visible {
+      background: rgba(139, 124, 255, 0.32);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    nav.toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 22px;
+    }
+
+    nav.toc a {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--line);
+    }
+
+    nav.toc a:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+
+    section.game {
+      margin-bottom: 36px;
+    }
+
+    .game-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 16px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .game-head h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .game-sand .pill { background: rgba(246, 165, 192, 0.2); color: var(--sand2); }
+    .game-duck .pill { background: rgba(255, 224, 138, 0.2); color: var(--duck); }
+    .game-doom .pill { background: rgba(124, 255, 178, 0.15); color: var(--doom); }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      .wrap { width: min(1100px, calc(100% - 20px)); padding-top: 18px; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .card:hover {
+      background: var(--card-hover);
+      border-color: rgba(255, 255, 255, 0.14);
+      transform: translateY(-2px);
+    }
+
+    .thumb {
+      aspect-ratio: 16 / 10;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(255, 255, 255, 0.03) 0 8px,
+          rgba(255, 255, 255, 0.01) 8px 16px
+        ),
+        var(--bg2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-sand .thumb { background-image: linear-gradient(145deg, rgba(246, 165, 192, 0.25), transparent 55%), linear-gradient(#1a1430, #12101f); }
+    .game-duck .thumb { background-image: linear-gradient(145deg, rgba(255, 224, 138, 0.22), transparent 55%), linear-gradient(#142033, #101820); }
+    .game-doom .thumb { background-image: linear-gradient(145deg, rgba(124, 255, 178, 0.18), transparent 55%), linear-gradient(#141c18, #101410); }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+
+    .thumb img[hidden] { display: none; }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: 6px;
+      text-align: center;
+      padding: 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+
+    .placeholder strong {
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .placeholder code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      opacity: 0.85;
+      word-break: break-all;
+    }
+
+    .card.is-loaded .placeholder { display: none; }
+
+    .meta {
+      padding: 14px 14px 16px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .meta h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .meta p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    footer {
+      margin-top: 12px;
+      padding: 18px 4px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+      border-top: 1px solid var(--line);
+    }
+
+    footer a { color: #c5bfff; text-decoration: underline; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <span class="badge"><i></i> 设计评审 · 编码前门禁</span>
+      <h1>三款抖音超休闲 · 设计评审图库</h1>
+      <p class="lead">
+        本页用于利益相关方验收 UI 稿、精灵表与玩法流程示意。图片放入
+        <code>./images/</code> 后会自动显示；缺失时显示占位，不影响文档阅读。
+        <strong>未勾选 ACCEPTANCE 前禁止开始玩法编码。</strong>
+      </p>
+      <div class="doc-links">
+        <a href="./RESEARCH.md">品类调研 RESEARCH</a>
+        <a href="./GDD-ONEPAGERS.md">GDD 一页纸</a>
+        <a href="./ACCEPTANCE.md">验收勾选 ACCEPTANCE</a>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="游戏导航">
+      <a href="#sand">拼图解压馆</a>
+      <a href="#duck">消除我可以</a>
+      <a href="#doom">向末日开炮</a>
+    </nav>
+
+    <!-- 拼图解压馆 -->
+    <section class="game game-sand" id="sand">
+      <div class="game-head">
+        <h2><span class="pill">SAND</span> 拼图解压馆 · 流沙接桶</h2>
+        <p class="sub">重力沙 · 传送带同色桶 · 合成 · 填像素图案</p>
+      </div>
+      <div class="grid">
+        <article class="card" data-src="./images/sand-ui-mockup.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>UI 整屏稿</strong><span>待放入图片</span><code>sand-ui-mockup.jpg</code></div>
+            <img alt="拼图解压馆 UI 稿" hidden />
+          </div>
+          <div class="meta">
+            <h3>UI 界面稿</h3>
+            <p>图案区、传送带槽位、手牌桶、道具与 HUD。</p>
+          </div>
+        </article>
+        <article class="card" data-src="./images/sand-sprites.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>精灵 / 素材</strong><span>待放入图片</span><code>sand-sprites.jpg</code></div>
+            <img alt="拼图解压馆精灵表" hidden />
+          </div>
+          <div class="meta">
+            <h3>精灵表</h3>
+            <p>彩色桶、沙粒、道具图标、控件。</p>
+          </div>
+        </article>
+        <article class="card" data-src="./images/sand-flow.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>玩法流程</strong><span>待放入图片</span><code>sand-flow.jpg</code></div>
+            <img alt="拼图解压馆流程图" hidden />
+          </div>
+          <div class="meta">
+            <h3>玩法示意</h3>
+            <p>放置 → 同色吸入 → 合成 → 通关 / 失败。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 消除我可以 -->
+    <section class="game game-duck" id="duck">
+      <div class="game-head">
+        <h2><span class="pill">DUCK</span> 消除我可以 · 鸭子发射</h2>
+        <p class="sub">鸭子弹药打同色像素 · 流体塌落 · 不是 SameGame</p>
+      </div>
+      <div class="grid">
+        <article class="card" data-src="./images/duck-ui-mockup.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>UI 整屏稿</strong><span>待放入图片</span><code>duck-ui-mockup.jpg</code></div>
+            <img alt="消除我可以 UI 稿" hidden />
+          </div>
+          <div class="meta">
+            <h3>UI 界面稿</h3>
+            <p>像素区、鸭子池、发射台、四按钮与 HUD。</p>
+          </div>
+        </article>
+        <article class="card" data-src="./images/duck-sprites.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>精灵 / 素材</strong><span>待放入图片</span><code>duck-sprites.jpg</code></div>
+            <img alt="消除我可以精灵表" hidden />
+          </div>
+          <div class="meta">
+            <h3>精灵表</h3>
+            <p>多色鸭子、像素块、石头障碍、按钮。</p>
+          </div>
+        </article>
+        <article class="card" data-src="./images/duck-flow.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>玩法流程</strong><span>待放入图片</span><code>duck-flow.jpg</code></div>
+            <img alt="消除我可以流程图" hidden />
+          </div>
+          <div class="meta">
+            <h3>玩法示意</h3>
+            <p>选鸭 → 射击同色 → 碎裂塌落 → 清空通关。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 向末日开炮 -->
+    <section class="game game-doom" id="doom">
+      <div class="game-head">
+        <h2><span class="pill">DOOM</span> 向末日开炮 · 数字门</h2>
+        <p class="sub">自动跑 · 滑选门 · 自动开火 · 尸潮贴地 · 终点武器认人 · 无 SLG</p>
+      </div>
+      <div class="grid">
+        <article class="card" data-src="./images/doom-ui-mockup.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>UI 整屏稿</strong><span>待放入图片</span><code>doom-ui-mockup.jpg</code></div>
+            <img alt="向末日开炮 UI 稿" hidden />
+          </div>
+          <div class="meta">
+            <h3>UI 界面稿</h3>
+            <p>透视跑道、大门、小队、尸潮、终点武器门。</p>
+          </div>
+        </article>
+        <article class="card" data-src="./images/doom-sprites.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>精灵 / 素材</strong><span>待放入图片</span><code>doom-sprites.jpg</code></div>
+            <img alt="向末日开炮精灵表" hidden />
+          </div>
+          <div class="meta">
+            <h3>精灵表</h3>
+            <p>士兵、丧尸 / brute、门板、子弹（脚底锚点）。</p>
+          </div>
+        </article>
+        <article class="card" data-src="./images/doom-flow.jpg">
+          <div class="thumb">
+            <div class="placeholder"><strong>玩法流程</strong><span>待放入图片</span><code>doom-flow.jpg</code></div>
+            <img alt="向末日开炮流程图" hidden />
+          </div>
+          <div class="meta">
+            <h3>玩法示意</h3>
+            <p>开跑 → 选门涨人 → 扫尸潮 → 终点门槛通关。</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      文档目录 <code>docs/design-review/</code> ·
+      图片相对路径 <code>./images/</code> ·
+      打开本页可用任意静态服务器或直接 file:// ·
+      <a href="../../index.html">返回合集首页</a>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var cards = document.querySelectorAll(".card[data-src]");
+      cards.forEach(function (card) {
+        var src = card.getAttribute("data-src");
+        var img = card.querySelector("img");
+        if (!img || !src) return;
+        var probe = new Image();
+        probe.onload = function () {
+          img.src = src;
+          img.hidden = false;
+          card.classList.add("is-loaded");
+        };
+        probe.onerror = function () {
+          /* keep placeholder */
+        };
+        probe.src = src;
+      });
+    })();
+  </script>
+</body>
+</html>
