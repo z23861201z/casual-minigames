@@ -105,11 +105,25 @@ def foot_x(im: Image.Image) -> float:
     return total / weight
 
 
+def despill(im: Image.Image) -> Image.Image:
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a < 12:
+                px[x, y] = (0, 0, 0, 0)
+                continue
+            if r > 90 and b > 70 and g < 150 and (r + b) > (g * 2 + 70) and b > g + 8 and r > g:
+                px[x, y] = (0, 0, 0, 0)
+    return im
+
+
 def normalize(im: Image.Image, target_h: int) -> Image.Image:
-    im = trim(key_magenta(im))
+    im = despill(trim(key_magenta(im)))
     scale = target_h / max(1, im.height)
     nw = max(1, int(round(im.width * scale)))
-    return im.resize((nw, target_h), Image.Resampling.LANCZOS)
+    return despill(im.resize((nw, target_h), Image.Resampling.LANCZOS))
 
 
 def place_feet(frames: list[Image.Image], cell_h: int) -> Image.Image:
