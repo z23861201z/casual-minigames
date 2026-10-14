@@ -291,13 +291,15 @@
     else dragging = null;
   }
   cv.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
     setDrag(e, true);
     try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
   cv.addEventListener('pointermove', function (e) {
     if (!dragging || !state) return;
+    e.preventDefault();
     var dx = e.clientX - dragging.x;
-    state.targetX = DGCore.clamp(dragging.target + dx / (dragging.width * 0.18), -0.86, 0.86);
+    state.targetX = DGCore.clamp(dragging.target + dx / (dragging.width * 0.42), -0.86, 0.86);
   });
   cv.addEventListener('pointerup', function () { dragging = null; });
   cv.addEventListener('pointercancel', function () { dragging = null; });

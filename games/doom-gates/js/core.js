@@ -30,6 +30,11 @@
     return Math.max(a, Math.min(b, v));
   }
 
+  /** Map world x (-0.86..0.86) to screen lane (-1..1), linear through 0. */
+  function squadLane(x) {
+    return clamp(x / 0.86, -1, 1);
+  }
+
   function mulberry32(a) {
     return function () {
       a |= 0;
@@ -540,6 +545,7 @@
     WEAPONS: WEAPONS,
     KINDS: KINDS,
     clamp: clamp,
+    squadLane: squadLane,
     mulberry32: mulberry32,
     label: label,
     applySquad: applySquad,

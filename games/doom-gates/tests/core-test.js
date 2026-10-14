@@ -81,6 +81,20 @@ function assertEq(a, b, msg) {
   }
 })();
 
+(function linearSquadLane() {
+  assertEq(DGCore.squadLane(0), 0, 'lane is 0 at center (no snap gap)');
+  assertEq(DGCore.squadLane(0.86), 1, 'lane is 1 at right edge');
+  assertEq(DGCore.squadLane(-0.86), -1, 'lane is -1 at left edge');
+  var a = DGCore.squadLane(0.215);
+  var b = DGCore.squadLane(0.43);
+  assert(Math.abs(a - 0.25) < 1e-9, 'lane scales linearly at +0.215');
+  assert(Math.abs(b - 0.5) < 1e-9, 'lane scales linearly at +0.43');
+  assert(Math.abs(DGCore.squadLane(-0.215) + 0.25) < 1e-9, 'lane scales linearly at -0.215');
+  assert(a * 2 === b || Math.abs(a * 2 - b) < 1e-9, 'doubling x doubles lane through 0');
+  assert(DGCore.squadLane(0.01) > 0 && DGCore.squadLane(0.01) < 0.18, 'near-center positive is not snapped to 0.18');
+  assert(DGCore.squadLane(-0.01) < 0 && DGCore.squadLane(-0.01) > -0.18, 'near-center negative is not snapped to -0.18');
+})();
+
 (function centerLane() {
   function cross(x) {
     var state = DGCore.create({

@@ -389,9 +389,7 @@
       marks.push({ z: bullet.z, draw: function () {
         var side = bullet.side === 'left' ? -1 : 1;
         var travel = DGCore.clamp((p.depth - 0.35) / 18, 0, 0.62);
-        var lane0 = state.x < 0
-          ? DGCore.clamp(state.x / 0.86, -1, -0.18)
-          : DGCore.clamp(state.x / 0.86, 0.18, 1);
+        var lane0 = DGCore.squadLane(state.x);
         var originX = L.cx + lane0 * Math.min(128, L.w * 0.28);
         var originY = L.h - 150;
         var aimX = L.cx + side * Math.min(L.w * 0.16, 52);
@@ -414,10 +412,13 @@
 
     var squad = Math.max(0, state.squad | 0);
     var vis = Math.min(squad, 8);
-    var lane = state.x < 0
-      ? DGCore.clamp(state.x / 0.86, -1, -0.18)
-      : DGCore.clamp(state.x / 0.86, 0.18, 1);
+    var lane = DGCore.squadLane(state.x);
     var baseX = L.cx + lane * Math.min(128, L.w * 0.28);
+    // Faint lane marker so lateral drag is obvious.
+    ctx.fillStyle = 'rgba(255,255,255,.12)';
+    ctx.fillRect(baseX - 18, h - 132, 36, 8);
+    ctx.fillStyle = 'rgba(122,215,255,.35)';
+    ctx.fillRect(baseX - 2, h - 148, 4, 28);
     var cols = vis <= 3 ? Math.max(1, vis) : 4;
     var size = vis <= 1 ? 108 : vis <= 4 ? 76 : 58;
     for (var i = 0; i < vis; i++) {
