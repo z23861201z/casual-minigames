@@ -253,11 +253,14 @@
     if (hit.slot != null) {
       var occupying = state.slots[hit.slot];
       if (selected != null && state.hand.indexOf(selected) >= 0 && occupying == null) {
-        SBCore.place(state, selected, hit.slot);
-        taught = true;
-        bannerUntil = 0;
-        selected = null;
-        audio.tap();
+        var placedTap = SBCore.place(state, selected, hit.slot);
+        if (!placedTap.ok && placedTap.reason === 'limit') banner('放置次数用完了');
+        else if (placedTap.ok) {
+          taught = true;
+          bannerUntil = 0;
+          selected = null;
+          audio.tap();
+        }
         return;
       }
       if (occupying != null) {
@@ -449,7 +452,7 @@
       });
       if (pair && screen === 'play') {
         mergeBtn.hidden = false;
-        mergeBtn.textContent = '合成 +' + pair.n;
+        mergeBtn.textContent = '合成 ' + (pair.cap * 2);
         mergeBtn.style.top = (lastLayout.belt.y - 8) + 'px';
       } else mergeBtn.hidden = true;
     }
@@ -471,7 +474,7 @@
       preview = SBCore.create(currentDef());
       overlay.innerHTML =
         '<div class="sheet"><div class="kicker">SAND</div><h1>拼图解压馆</h1>' +
-        '<p>拖同色桶到传送带。沙子只进颜色一样的桶，桶上的数字是还剩多少容量。两个同色同容量的桶装满后合成，图案才会被填上。</p>' +
+        '<p>拖同色桶到传送带。沙子只进颜色一样的桶，桶上的数字是还剩多少容量。两个同色同容量的满桶合成一个更大的桶，没有搭档的满桶才会倒进图案。放置次数有上限。</p>' +
         '<div class="levels">' + levelButtons() + '</div>' +
         '<button class="go" type="button" data-act="start">开始接沙</button>' +
         '<button class="ghost" type="button" data-act="endless">无尽模式</button></div>';
@@ -628,7 +631,7 @@
           bannerUntil = 0;
           selected = null;
           audio.tap();
-        }
+        } else if (placed.reason === 'limit') banner('放置次数用完了');
       }
       drag = null;
       return;

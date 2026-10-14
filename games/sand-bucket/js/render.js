@@ -256,7 +256,8 @@
     ctx.textBaseline = 'middle';
     var used = 0;
     for (var us = 0; us < state.slots.length; us++) if (state.slots[us] != null) used++;
-    ctx.fillText('传送带 ' + used + '/' + state.slots.length, L.belt.x + L.belt.w - 12, L.belt.y + 14);
+    var cap = state.placeMax != null ? state.placeMax : used;
+    ctx.fillText('放置 ' + (state.placed || 0) + '/' + cap, L.belt.x + L.belt.w - 12, L.belt.y + 14);
 
     roundRect(ctx, L.plus.x, L.plus.y, L.plus.w, L.plus.h, 18);
     ctx.fillStyle = state.slots.length >= state.slotsCap ? '#d7d3cf' : '#7dce8a';

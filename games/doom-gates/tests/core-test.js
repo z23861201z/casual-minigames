@@ -81,6 +81,34 @@ function assertEq(a, b, msg) {
   }
 })();
 
+(function centerLane() {
+  function cross(x) {
+    var state = DGCore.create({
+      id: 8,
+      name: 'center',
+      startSquad: 20,
+      weapon: 0,
+      speed: 1,
+      gates: [{ z: 2, left: { type: 'mul', n: 2 }, right: { type: 'sub', n: 4 } }],
+      zombies: [],
+      finish: { z: 30, need: 1, weapon: 1, name: '手枪' }
+    });
+    state.x = x;
+    state.targetX = x;
+    state.z = 1.96;
+    state.fireCd = 9;
+    DGCore.step(state, 0.05);
+    return state;
+  }
+  var mid = cross(0);
+  assert(mid.gates[0].used, 'center run crosses the gate');
+  assertEq(mid.squad, 40, 'center dead-zone takes the better left gate');
+  var right = cross(0.4);
+  assertEq(right.squad, 16, 'a clear right lane still takes the right gate');
+  var left = cross(-0.4);
+  assertEq(left.squad, 40, 'a clear left lane takes the left gate');
+})();
+
 (function shootChangesGate() {
   var level = {
     id: 7,

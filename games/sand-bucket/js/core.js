@@ -3,8 +3,9 @@
  * No DOM or Canvas. Global: SBCore
  *
  * A grain caught by a same-color bucket fills it. Two full buckets of the
- * same color and capacity merge into the painting. A full bucket with no
- * partner auto-delivers. Spills beyond the budget lose the level.
+ * same color and capacity merge into one bigger bucket. A full bucket with
+ * no partner pours into the picture. Leftover sand at the end is not poured
+ * in for free. Spills beyond the budget lose the level.
  */
 (function (global) {
   'use strict';
@@ -215,7 +216,9 @@
       status: 'play',
       reason: '',
       events: [],
-      placed: 0
+      placed: 0,
+      placeMax: level.placeMax != null ? level.placeMax : buckets.length,
+      nextId: nextId
     };
   }
 
@@ -238,6 +241,7 @@
     if (handIndex < 0) return { ok: false, reason: 'hand' };
     var bucket = bucketById(state, bucketId);
     if (!bucket || !bucket.alive) return { ok: false, reason: 'dead' };
+    if (state.placed >= state.placeMax) return { ok: false, reason: 'limit' };
     state.hand.splice(handIndex, 1);
     state.slots[slotIndex] = bucketId;
     state.placed++;
@@ -377,18 +381,81 @@
     return best;
   }
 
+  function slotOf(state, bucketId) {
+    for (var i = 0; i < state.slots.length; i++) {
+      if (state.slots[i] === bucketId) return i;
+    }
+    return -1;
+  }
+
+  function detachBucket(state, bucket) {
+    freeSlot(state, bucket.id);
+    bucket.alive = false;
+    bucket.fill = 0;
+    bucket.cells = [];
+  }
+
+  function collectSolos(state, scoreEach) {
+    var delivered = 0;
+    var guard = 0;
+    while (guard++ < 16) {
+      var found = null;
+      for (var i = 0; i < state.buckets.length; i++) {
+        if (canSolo(state, state.buckets[i])) {
+          found = state.buckets[i];
+          break;
+        }
+      }
+      if (!found) break;
+      var color = found.rainbow ? -1 : found.color;
+      var n = deliverBucket(state, found);
+      delivered += n;
+      if (scoreEach) state.score += n * scoreEach;
+      pushEvent(state, { type: 'deliver', n: n, text: '+' + n, color: color });
+    }
+    return delivered;
+  }
+
   function merge(state, idA, idB) {
     var a = bucketById(state, idA);
     var b = bucketById(state, idB);
     if (!canMerge(a, b)) return { ok: false, reason: 'rule' };
     if (!onBelt(state, a.id) || !onBelt(state, b.id)) return { ok: false, reason: 'belt' };
-    var color = a.rainbow ? -1 : a.color;
-    var n = deliverBucket(state, a) + deliverBucket(state, b);
+    var slot = slotOf(state, a.id);
+    var cells = a.cells.concat(b.cells);
+    var cap = a.cap + b.cap;
+    var color = a.color;
+    var rainbow = !!a.rainbow;
+    detachBucket(state, a);
+    detachBucket(state, b);
+    var bigger = {
+      id: state.nextId++,
+      color: color,
+      cap: cap,
+      fill: cells.length,
+      cells: cells,
+      rainbow: rainbow,
+      alive: true
+    };
+    state.buckets.push(bigger);
+    if (slot < 0) slot = 0;
+    state.slots[slot] = bigger.id;
     state.mergeCount++;
     var mult = Math.max(1, Math.ceil(state.combo / 3));
-    state.score += n * 30 * mult;
-    pushEvent(state, { type: 'merge', n: n, text: '+' + n, color: color, mult: mult });
-    return { ok: true, n: n, text: '+' + n };
+    state.score += cells.length * 5;
+    var poured = collectSolos(state, 30 * mult);
+    var text = poured > 0 ? ('+' + poured) : ('容量 ' + cap);
+    pushEvent(state, {
+      type: 'merge',
+      n: poured || cells.length,
+      text: text,
+      color: rainbow ? -1 : color,
+      mult: mult,
+      cap: cap,
+      a: bigger.alive ? bigger.id : null,
+      delivered: poured
+    });
+    return { ok: true, n: poured || cells.length, cap: cap, id: bigger.id, delivered: poured };
   }
 
   function deliverSolo(state, bucketId) {
@@ -404,22 +471,24 @@
   function settle(state) {
     if (state.status !== 'play') return state.status;
     if (state.queue.length || state.inflight.length) return 'play';
+    collectSolos(state, 15);
+    var held = 0;
     for (var i = 0; i < state.buckets.length; i++) {
       var bucket = state.buckets[i];
-      if (!bucket.alive || bucket.cells.length === 0) continue;
-      state.score += bucket.cells.length * 15;
-      deliverBucket(state, bucket);
+      if (bucket.alive && bucket.cells.length > 0) held += bucket.cells.length;
     }
     if (state.lost > state.spillBudget) {
       state.status = 'lose';
       state.reason = 'spill';
-    } else if (state.delivered + state.lost >= state.total) {
+      pushEvent(state, { type: 'lose', reason: 'spill' });
+    } else if (held === 0 && state.delivered + state.lost >= state.total) {
       state.status = 'win';
       state.reason = 'clear';
       pushEvent(state, { type: 'win', score: state.score });
     } else {
       state.status = 'lose';
       state.reason = 'short';
+      pushEvent(state, { type: 'lose', reason: 'short' });
     }
     return state.status;
   }

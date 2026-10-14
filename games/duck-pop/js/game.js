@@ -420,13 +420,19 @@
       startRun();
     } else if (act === 'claim') {
       if (adRetry) {
-        DPCore.grant(state, adRetry.tool);
+        var claimed = adRetry.tool;
+        DPCore.grant(state, claimed);
         if (adRetry.retry) adRetry.retry();
+        if (claimed === 'clear') {
+          clearMode = true;
+          banner('点一个方块把它清掉');
+        }
       }
       screen = 'play';
       overlay.hidden = true;
       tools.hidden = false;
       pauseBtn.hidden = false;
+      refreshTools();
     } else if (act === 'cancel-ad') {
       screen = 'play';
       overlay.hidden = true;

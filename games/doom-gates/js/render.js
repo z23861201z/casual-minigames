@@ -255,7 +255,12 @@
         ctx.lineWidth = Math.max(2, (a ? a.k : 10) * 0.03);
         if (a && b) { ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke(); }
         if (c && d) { ctx.beginPath(); ctx.moveTo(c.sx, c.sy); ctx.lineTo(d.sx, d.sy); ctx.stroke(); }
-        if (Math.floor(z) % 3 === 0) {
+        var gateDash = false;
+        for (var gi = 0; gi < state.gates.length; gi++) {
+          if (!state.gates[gi].used && Math.abs(z - state.gates[gi].z) < 1.2) gateDash = true;
+        }
+        if (!state.finish.used && Math.abs(z - state.finish.z) < 1.5) gateDash = true;
+        if (!gateDash && Math.floor(z) % 3 === 0) {
           var m1 = project(L, state, 0, z);
           var m2 = project(L, state, 0, z + 0.9);
           if (m1 && m2) {
@@ -281,7 +286,9 @@
     state.zombies.forEach(function (zombie) {
       if (!zombie.alive) return;
       var drawX = DGCore.clamp(zombie.x, -0.92, 0.92);
-      var p = project(L, state, drawX, zombie.z);
+      var inContact = zombie.collide !== false && zombie.z >= state.z - 0.4 && zombie.z <= state.z + 0.9;
+      var drawZ = (inContact && zombie.z < state.z + 0.2) ? state.z + 0.2 : zombie.z;
+      var p = project(L, state, drawX, drawZ);
       if (!p || p.depth > 48) return;
       marks.push({ z: zombie.z, draw: function () {
         var sideSign = drawX < 0 ? -1 : 1;
@@ -326,7 +333,7 @@
       } });
     });
 
-    var aimedRight = state.x >= 0;
+    var aimedRight = DGCore.pickSide(state) === 'right';
     state.gates.forEach(function (gate) {
       if (gate.used) return;
       var box = pairLayout(L, state, gate.z);

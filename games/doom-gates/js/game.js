@@ -86,8 +86,9 @@
     screen = 'play';
     pauseBtn.hidden = false;
     overlay.hidden = true;
-    bannerEl.hidden = true;
-    hintEl.hidden = true;
+    bannerEl.hidden = false;
+    hintEl.hidden = false;
+    bannerEl.textContent = '左右滑动选门 · 子弹能把数字改得更赚';
     squadLabel.textContent = '滑向更大的数字';
     taughtUntil = performance.now() + 2800;
   }
@@ -130,7 +131,7 @@
         audio.charge();
         floatAt('需要 ' + ev.text, viewW / 2, viewH * 0.28, 'mega');
       } else if (ev.type === 'contact') {
-        audio.lose();
+        audio.hit();
         hurtEl.classList.add('on');
         shake = 12;
         floatAt('-1', viewW / 2, viewH * 0.62, 'bad');
@@ -180,7 +181,11 @@
       squadEl.classList.add('pop');
       shownSquad = state.squad;
     }
-    if (performance.now() > taughtUntil) squadLabel.textContent = '火力 ' + volley + ' · 击倒 ' + state.kills;
+    if (performance.now() > taughtUntil) {
+      squadLabel.textContent = '火力 ' + volley + ' · 击倒 ' + state.kills;
+      bannerEl.hidden = true;
+      hintEl.hidden = true;
+    }
   }
 
   function frame(ts) {

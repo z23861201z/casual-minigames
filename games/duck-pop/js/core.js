@@ -282,6 +282,7 @@
         if (state.grid[r2][c2] != null) state.grid[r2][c2] = colors[k++];
       }
     }
+    collapse(state.grid);
     state.shuffles--;
     breakChain(state);
     state.events.push({ type: 'shuffle' });

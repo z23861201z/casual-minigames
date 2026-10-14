@@ -164,8 +164,33 @@
     };
   }
 
-  function pickSide(x) {
-    return x < 0 ? 'left' : 'right';
+  var LANE_DEAD = 0.12;
+
+  /**
+   * Clear left/right halves pick that gate. The middle does not default to
+   * the right door: a committed swipe wins, otherwise the better number.
+   */
+  function pickSide(stateOrX, maybeState) {
+    var x;
+    var state = null;
+    if (typeof stateOrX === 'number') {
+      x = stateOrX;
+      state = maybeState || null;
+    } else {
+      state = stateOrX;
+      x = state ? state.x : 0;
+    }
+    if (x < -LANE_DEAD) return 'left';
+    if (x > LANE_DEAD) return 'right';
+    if (state && state.targetX < -LANE_DEAD) return 'left';
+    if (state && state.targetX > LANE_DEAD) return 'right';
+    if (state && state.gates) {
+      for (var i = 0; i < state.gates.length; i++) {
+        var gate = state.gates[i];
+        if (!gate.used && gate.z >= state.z - 0.05) return betterSide(state.squad, gate);
+      }
+    }
+    return 'left';
   }
 
   function fireInterval(squad) {
@@ -187,7 +212,7 @@
     var spread = Math.min(0.34, 0.08 + count * 0.01);
     var damage = bulletDamage(state);
     var splash = weaponByIndex(state.weapon).splash;
-    var side = pickSide(state.x);
+    var side = pickSide(state);
     for (var i = 0; i < count; i++) {
       var t = count === 1 ? 0 : (i / (count - 1) - 0.5);
       state.bullets.push({
@@ -283,7 +308,7 @@
       var tg = (gate.z - bullet.z) / travelG;
       var gx = bullet.x + (nx - bullet.x) * tg;
       if (gx < -1.35 || gx > 1.35) continue;
-      marks.push({ z: gate.z, kind: 'gate', gate: gate, side: bullet.side || pickSide(state.x), x: gx });
+      marks.push({ z: gate.z, kind: 'gate', gate: gate, side: bullet.side || pickSide(state), x: gx });
     }
     var fin = state.finish;
     if (!fin.used && fin.z > bullet.z && fin.z <= nz + 0.05) {
@@ -320,7 +345,7 @@
       var gate = state.gates[i];
       if (gate.used || state.z < gate.z) continue;
       gate.used = true;
-      var sideName = pickSide(state.x);
+      var sideName = pickSide(state);
       var applied = applySquad(state.squad, gate[sideName]);
       state.squad = applied.squad;
       if (state.squad > state.bestSquad) state.bestSquad = state.squad;
@@ -525,6 +550,7 @@
     step: step,
     previewSquad: previewSquad,
     betterSide: betterSide,
+    pickSide: pickSide,
     botTarget: botTarget,
     runBot: runBot,
     buildEndless: buildEndless,

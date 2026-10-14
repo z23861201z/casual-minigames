@@ -116,6 +116,23 @@ function greedy(level) {
   assert(ad.needAd, 'shuffle ad hook');
   assert(DPCore.grant(noTool, 'shuffle'), 'grant shuffle');
   assert(DPCore.shuffle(noTool).ok, 'shuffle after grant');
+  var floaty = DPCore.create({
+    id: 52,
+    name: 'float',
+    rows: ['0.', '.1'],
+    bonus: 0,
+    shuffles: 1,
+    clears: 0,
+    stars: 0
+  });
+  assert(DPCore.shuffle(floaty).ok, 'shuffle packs the board');
+  for (var c = 0; c < floaty.cols; c++) {
+    var hole = false;
+    for (var r = floaty.rows - 1; r >= 0; r--) {
+      if (floaty.grid[r][c] == null) hole = true;
+      else assert(!hole, 'shuffle collapse leaves no floating block');
+    }
+  }
 })();
 
 if (failed) {

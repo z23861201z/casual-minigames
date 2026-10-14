@@ -175,8 +175,72 @@ function simPerfect(level) {
   var before = state.delivered;
   var res = SBCore.merge(state, found.a, found.b);
   assert(res.ok, 'merge ok');
-  assert(state.delivered > before, 'merge fills the picture');
+  assert(state.delivered > before, 'a lone pair pours into the picture');
   assertEq(state.slots[0], null, 'slots freed');
+})();
+
+(function biggerBucket() {
+  var state = SBCore.create({ id: 97, name: 'bigger', rows: ['1'], slots: 4, spillBudget: 2 });
+  var cells = [];
+  for (var i = 0; i < 16; i++) cells.push({ id: i, r: 0, c: 0, color: 1, state: 'bucket' });
+  state.cells = cells;
+  state.buckets = [
+    { id: 1, color: 1, cap: 8, fill: 8, cells: [0, 1, 2, 3, 4, 5, 6, 7], rainbow: false, alive: true },
+    { id: 2, color: 1, cap: 8, fill: 8, cells: [8, 9, 10, 11, 12, 13, 14, 15], rainbow: false, alive: true },
+    { id: 3, color: 1, cap: 16, fill: 0, cells: [], rainbow: false, alive: true }
+  ];
+  state.slots = [1, 2, null, null];
+  state.hand = [3];
+  state.nextId = 4;
+  var before = state.delivered;
+  var res = SBCore.merge(state, 1, 2);
+  assert(res.ok, 'merge builds a bucket');
+  assertEq(res.cap, 16, 'merged cap is the sum');
+  assertEq(state.delivered, before, 'a partner blocks the pour');
+  var bigger = null;
+  for (var b = 0; b < state.buckets.length; b++) {
+    if (state.buckets[b].alive && state.buckets[b].cap === 16 && state.buckets[b].fill === 16) bigger = state.buckets[b];
+  }
+  assert(bigger, 'bigger full bucket stays on the belt');
+  assert(!state.buckets[0].alive && !state.buckets[1].alive, 'the two small buckets are gone');
+})();
+
+(function settleKeepsUnmerged() {
+  var state = SBCore.create({
+    id: 98,
+    name: 'nosettle',
+    rows: ['11111111', '11111111'],
+    slots: 4,
+    spillBudget: 20
+  });
+  while (state.queue.length && state.status === 'play') {
+    var cell = SBCore.releaseOne(state);
+    var bucket = null;
+    for (var i = 0; i < state.buckets.length; i++) {
+      var item = state.buckets[i];
+      if (!item.alive || item.fill >= item.cap || item.color !== cell.color) continue;
+      if (state.slots.indexOf(item.id) < 0) {
+        var slot = state.slots.indexOf(null);
+        if (slot >= 0) SBCore.place(state, item.id, slot);
+      }
+      if (state.slots.indexOf(item.id) >= 0) { bucket = item; break; }
+    }
+    if (bucket) SBCore.catchCell(state, bucket.id, cell.id);
+    else SBCore.spillCell(state, cell.id);
+  }
+  assertEq(state.mergeCount, 0, 'fixture did not merge');
+  SBCore.settle(state);
+  assert(state.status !== 'win', 'settle does not auto-win unmerged sand');
+  assert(state.delivered < state.total, 'leftover sand stays out of the picture');
+})();
+
+(function placeCap() {
+  var state = SBCore.create(LEVELS[0]);
+  assert(state.placeMax >= 1, 'level has a placement cap');
+  state.placed = state.placeMax;
+  var denied = SBCore.place(state, state.hand[0], 0);
+  assert(!denied.ok, 'place stops at the cap');
+  assertEq(denied.reason, 'limit', 'cap reason is limit');
 })();
 
 if (failed) {
