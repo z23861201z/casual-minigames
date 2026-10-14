@@ -390,7 +390,7 @@
         var side = bullet.side === 'left' ? -1 : 1;
         var travel = DGCore.clamp((p.depth - 0.35) / 18, 0, 0.62);
         var lane0 = DGCore.squadLane(state.x);
-        var originX = L.cx + lane0 * Math.min(128, L.w * 0.28);
+        var originX = L.cx + lane0 * Math.min(168, L.w * 0.42);
         var originY = L.h - 150;
         var aimX = L.cx + side * Math.min(L.w * 0.16, 52);
         var aimY = L.h * 0.5;
@@ -413,7 +413,7 @@
     var squad = Math.max(0, state.squad | 0);
     var vis = Math.min(squad, 8);
     var lane = DGCore.squadLane(state.x);
-    var baseX = L.cx + lane * Math.min(128, L.w * 0.28);
+    var baseX = L.cx + lane * Math.min(168, L.w * 0.42);
     // Faint lane marker so lateral drag is obvious.
     ctx.fillStyle = 'rgba(255,255,255,.12)';
     ctx.fillRect(baseX - 18, h - 132, 36, 8);
